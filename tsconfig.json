@@ -20,7 +20,7 @@
     "paths": {
       "@/api/*": ["./src/server/api/*"],
       "@/*": ["./src/*"],
-      "@airo/content": ["./content-lib/src/index.ts"]
+      "@airo/content": ["./src/lib/content/index.ts"]
     },
     "baseUrl": "."
   },
