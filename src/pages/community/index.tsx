@@ -459,35 +459,40 @@ export default function CommunityPage() {
           <div className="relative max-w-5xl mx-auto px-5 md:px-8 pt-10 pb-0 md:pt-14 flex flex-col items-center text-center">
 
             {/* Logo + shimmer + moon glow */}
-            <div className="relative inline-block mb-5 md:mb-6" style={{ maxWidth: 'min(320px, 70vw)' }}>
-              {/* Moon glow ring over the crescent */}
+            <div className="relative mb-5 md:mb-6" style={{ maxWidth: 'min(320px, 70vw)', width: '100%' }}>
+              {/* Moon glow — sits behind the logo, outside overflow-hidden so no rect clip */}
               <div
                 className="absolute pointer-events-none mglow sa"
                 aria-hidden="true"
                 style={{
-                  top: '-10%', left: '50%', transform: 'translateX(-50%)',
-                  width: '28%', paddingBottom: '28%',
+                  top: '-8%', left: '50%',
+                  transform: 'translateX(-50%)',
+                  width: '30%', height: '30%',
                   borderRadius: '50%',
-                  boxShadow: `0 0 18px 6px hsl(var(--hero-lavender-soft) / 0.45)`,
+                  background: 'transparent',
+                  boxShadow: `0 0 32px 16px hsl(var(--hero-lavender-soft) / 0.35)`,
+                  zIndex: 0,
                 }}
               />
-              {/* Official Spellful logo */}
-              <img
-                src="/airo-assets/images/logo/horizontal"
-                alt="Spellful"
-                className="relative block w-full h-auto object-contain"
-                style={{
-                  filter: `drop-shadow(0 0 20px hsl(var(--hero-lavender) / 0.5)) drop-shadow(0 0 8px hsl(var(--hero-gold) / 0.3))`,
-                }}
-                loading="eager"
-                fetchPriority="high"
-              />
-              {/* Shimmer sweep */}
-              <div
-                className="absolute inset-0 pointer-events-none overflow-hidden shimmer sa"
-                aria-hidden="true"
-                style={{ background: `linear-gradient(105deg, transparent 30%, hsl(var(--hero-moonlight) / 0.25) 50%, transparent 70%)` }}
-              />
+              {/* Official Spellful logo — overflow-hidden on this wrapper clips only the shimmer */}
+              <div className="relative overflow-hidden" style={{ zIndex: 1 }}>
+                <img
+                  src="/airo-assets/images/logo/horizontal"
+                  alt="Spellful"
+                  className="block w-full h-auto object-contain"
+                  style={{
+                    filter: `drop-shadow(0 0 20px hsl(var(--hero-lavender) / 0.5)) drop-shadow(0 0 8px hsl(var(--hero-gold) / 0.3))`,
+                  }}
+                  loading="eager"
+                  fetchPriority="high"
+                />
+                {/* Shimmer sweep — clipped to logo bounds only */}
+                <div
+                  className="absolute inset-0 pointer-events-none shimmer sa"
+                  aria-hidden="true"
+                  style={{ background: `linear-gradient(105deg, transparent 30%, hsl(var(--hero-moonlight) / 0.25) 50%, transparent 70%)` }}
+                />
+              </div>
             </div>
 
             {/* Heading + subtitle */}

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, type ReactNode } from 'react';
 import { useNavigate, Link, Navigate } from 'react-router';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { motion, useReducedMotion } from 'motion/react';
@@ -11,9 +11,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import {
   User, Star, LogOut, Sparkles, Camera, Eye, EyeOff,
-  ShieldCheck, ShieldOff, Smartphone, Key, Check, X, QrCode,
+  ShieldCheck, ShieldOff, Shield, Smartphone, Key, Check, X, QrCode,
   Globe, Lock, Users, Monitor, Trash2, Activity, Bell, MessageSquare as MessageSquareIcon,
-  Download, AlertTriangle, Sliders, Type, Contrast, Wand2, CheckCircle2, Award,
+  Download, AlertTriangle, Sliders, Type, Contrast, Wand2, CheckCircle2, Award, Crown, ChevronRight,
 } from 'lucide-react';
 import { account } from 'virtual:content';
 
@@ -1112,10 +1112,10 @@ export default function AccountPage() {
                             : account.profileTab.saveButton}
                       </Button>
                       {username && (
-                        <a href={`/u/${username}`} target="_blank" rel="noreferrer"
+                        <Link to={`/u/${username}`}
                           className="text-xs hover:underline" style={{ color: 'hsl(var(--primary))' }}>
                           {account.profileTab.viewProfileLink}
-                        </a>
+                        </Link>
                       )}
                     </div>
                   </div>
@@ -1261,6 +1261,38 @@ export default function AccountPage() {
                       </p>
                     </div>
                   </div>
+
+                  {/* Platform Role — shown when user has an elevated role; tapping opens the role dashboard */}
+                  {(() => {
+                    const platformRole = (user as { platformRole?: string }).platformRole;
+                    if (!platformRole || platformRole === 'member') return null;
+                    const roleConfig: Record<string, { label: string; desc: string; dashboardLabel: string; route: string; color: string; bg: string; icon: ReactNode }> = {
+                      owner:     { label: 'Platform Owner',  desc: 'Full platform access and control',  dashboardLabel: 'Open Admin Dashboard',  route: '/admin/dashboard',  color: 'hsl(var(--primary))',  bg: 'hsl(var(--primary) / 0.12)',  icon: <Crown      className="w-4 h-4" style={{ color: 'hsl(var(--primary))' }} /> },
+                      admin:     { label: 'Admin',           desc: 'Platform administrator',            dashboardLabel: 'Open Admin Dashboard',  route: '/admin/dashboard',  color: 'hsl(var(--accent))',   bg: 'hsl(var(--accent) / 0.12)',   icon: <ShieldCheck className="w-4 h-4" style={{ color: 'hsl(var(--accent))' }} /> },
+                      moderator: { label: 'Moderator',       desc: 'Community moderator',               dashboardLabel: 'Open Moderator Queue',  route: '/admin/moderator',  color: 'hsl(var(--info))',     bg: 'hsl(var(--info) / 0.12)',     icon: <Shield     className="w-4 h-4" style={{ color: 'hsl(var(--info))' }} /> },
+                      support:   { label: 'Support',         desc: 'Support team member',               dashboardLabel: 'Open Applications',     route: '/admin/applications', color: 'hsl(var(--success))', bg: 'hsl(var(--success) / 0.12)', icon: <CheckCircle2 className="w-4 h-4" style={{ color: 'hsl(var(--success))' }} /> },
+                    };
+                    const cfg = roleConfig[platformRole];
+                    if (!cfg) return null;
+                    return (
+                      <Link
+                        to={cfg.route}
+                        className="flex items-center gap-3 mb-5 p-3 rounded-xl transition-opacity hover:opacity-80 active:opacity-60"
+                        style={{ background: cfg.bg, border: `1px solid ${cfg.color}40`, textDecoration: 'none' }}
+                        aria-label={`${cfg.label} — ${cfg.dashboardLabel}`}
+                      >
+                        <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+                          style={{ background: cfg.bg }}>
+                          {cfg.icon}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold" style={{ color: cfg.color }}>{cfg.label}</p>
+                          <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>{cfg.desc}</p>
+                        </div>
+                        <ChevronRight className="w-4 h-4 flex-shrink-0" style={{ color: cfg.color }} />
+                      </Link>
+                    );
+                  })()}
 
                   {/* Creator application — shown to community_member */}
                   {accountType === 'community_member' && (

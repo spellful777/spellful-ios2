@@ -42,8 +42,9 @@ export default async function handler(req: Request, res: Response) {
   if (!targetId || !field || !value) {
     return res.status(400).json({ error: 'targetId, field, and value are required' });
   }
-  if (targetId === actorId) {
-    return res.status(400).json({ error: 'You cannot change your own role' });
+  // Only the Platform Owner may change their own role; all others are blocked from self-role changes
+  if (targetId === actorId && field === 'platformRole' && actorRole !== 'owner') {
+    return res.status(400).json({ error: 'You cannot change your own platform role' });
   }
 
   // Fetch target's current values

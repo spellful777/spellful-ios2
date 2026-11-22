@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { motion } from 'motion/react';
-import { signUp, authClient, useSession } from '@/lib/auth/auth-client';
+import { authClient, useSession } from '@/lib/auth/auth-client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -55,7 +55,7 @@ export default function SignupPage() {
     setError('');
     setLoading(true);
     try {
-      const result = await signUp.email({ name, email, password });
+      const result = await authClient.signUp.email({ name, email, password });
       if (!result) {
         setError('Something went wrong. Please try again.');
         return;

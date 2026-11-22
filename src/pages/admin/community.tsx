@@ -218,7 +218,6 @@ function ReportsTab() {
                   {(r.targetType === 'post' || r.targetType === 'reply') && (
                     <Link
                       to={r.targetType === 'post' ? `/community/post/${r.targetId}` : `/community/post/${r.targetPostId ?? r.targetId}`}
-                      target="_blank"
                       className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
                       title="View in community"
                     >
@@ -350,7 +349,7 @@ function PostsTab() {
                 #{post.id} · {post.categoryName} · {post.authorName} · {ago(post.createdAt)}
               </p>
             </div>
-            <Link to={`/community/post/${post.id}`} target="_blank" className="text-muted-foreground hover:text-foreground shrink-0">
+            <Link to={`/community/post/${post.id}`} className="text-muted-foreground hover:text-foreground shrink-0">
               <ChevronRight className="w-4 h-4" />
             </Link>
           </div>
@@ -1196,7 +1195,9 @@ export default function AdminCommunityPage() {
 
   if (isPending) return null;
 
-  if (!session || !(session.user as { isAdmin?: boolean }).isAdmin) {
+  const platformRole = (session?.user as { platformRole?: string })?.platformRole ?? 'member';
+  const hasAdminAccess = ['owner', 'admin', 'moderator'].includes(platformRole);
+  if (!session || !hasAdminAccess) {
     return (
       <main className="min-h-screen flex items-center justify-center">
         <p className="text-sm text-muted-foreground">Admin access required.</p>

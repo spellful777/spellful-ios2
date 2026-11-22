@@ -286,7 +286,7 @@ export default function AdminSpellsPage() {
                         </div>
 
                         <div className="flex flex-wrap gap-2 shrink-0">
-                          <Link to={`/spells/${spell.slug}`} target="_blank">
+                          <Link to={`/spells/${spell.slug}`}>
                             <Button size="sm" variant="outline" className="gap-1.5 text-xs">
                               <Eye className="w-3 h-3" /> View
                             </Button>

@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { motion, AnimatePresence } from 'motion/react';
 import { useSession } from '@/lib/auth/auth-client';
+import { useEntitlement } from '@/lib/use-plus-entitlement';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -230,6 +231,7 @@ const TABS: { id: StudioTab; label: string; icon: React.ElementType }[] = [
 export default function ProfileStudioPage() {
   const navigate = useNavigate();
   const { session, isPending } = useSession();
+  const ent = useEntitlement();
 
   const [form, setForm] = useState<FormState>(DEFAULT_FORM_REAL);
   const [original, setOriginal] = useState<FormState>(DEFAULT_FORM_REAL);
@@ -749,15 +751,15 @@ export default function ProfileStudioPage() {
                 </button>
               ))}
             </div>
-            <button
-              onClick={() => window.open(`/u/${(session?.user as SessionUser | undefined)?.username ?? ''}`, '_blank', 'noopener,noreferrer')}
+            <Link
+              to={`/u/${(session?.user as SessionUser | undefined)?.username ?? ''}`}
               className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-full border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               style={{ borderColor: 'hsl(var(--border))', color: 'hsl(var(--muted-foreground))' }}
-              title="Open live profile"
-              aria-label="Open live public profile"
+              title="View live profile"
+              aria-label="View live public profile"
             >
               <Eye className="w-3.5 h-3.5" />
-            </button>
+            </Link>
           </div>
 
           {/* ── Live preview card ── */}
@@ -930,6 +932,34 @@ export default function ProfileStudioPage() {
                         onChange={e => { const f = e.target.files?.[0]; if (f) void uploadCover(f); }} />
                     </div>
                   </Collapsible>
+
+                  {/* Plus upgrade nudge — shown only to free users */}
+                  {!ent.data.isPlus && (
+                    <Link
+                      to="/plus"
+                      className="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors"
+                      style={{
+                        background: 'hsl(var(--primary) / 0.07)',
+                        border: '1px solid hsl(var(--primary) / 0.25)',
+                      }}
+                    >
+                      <div
+                        className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                        style={{ background: 'hsl(var(--primary) / 0.15)' }}
+                      >
+                        <Sparkles className="w-3.5 h-3.5" style={{ color: 'hsl(var(--primary))' }} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium" style={{ color: 'hsl(var(--primary))' }}>
+                          Unlock more with Spellful Plus
+                        </p>
+                        <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                          More themes, frames &amp; personalization
+                        </p>
+                      </div>
+                      <svg className="w-3.5 h-3.5 flex-shrink-0" style={{ color: 'hsl(var(--muted-foreground))' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
+                    </Link>
+                  )}
 
                   {/* Theme */}
                   <Collapsible title="Theme">

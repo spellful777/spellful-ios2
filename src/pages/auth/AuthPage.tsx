@@ -21,7 +21,7 @@
 import { useState, FormEvent, ReactElement } from 'react';
 import { Navigate, useNavigate, useLocation } from 'react-router';
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { signIn, signUp, useSession } from '@/lib/auth/auth-client';
+import { authClient, useSession } from '@/lib/auth/auth-client';
 import { toSafeInternalPath } from '@/lib/auth/safe-redirect';
 
 /**
@@ -154,8 +154,8 @@ export default function AuthPage({ mode, providers }: AuthPageProps) {
     setLoading(true);
     try {
       const result = isLogin
-        ? await signIn.email({ email, password })
-        : await signUp.email({ email, password, name: name || '' });
+        ? await authClient.signIn.email({ email, password })
+        : await authClient.signUp.email({ email, password, name: name || '' });
       if (result.error) {
         setError(result.error.message || 'Authentication failed');
         return;
@@ -177,7 +177,7 @@ export default function AuthPage({ mode, providers }: AuthPageProps) {
     if (!isInIframe()) {
       setSocialLoading(provider);
       try {
-        await signIn.social({ provider, callbackURL: window.location.origin + from });
+        await authClient.signIn.social({ provider, callbackURL: window.location.origin + from });
       } catch {
         // eslint-disable-next-line security/detect-object-injection
         setError(`Failed to sign in with ${PROVIDER_CONFIG[provider]?.name || provider}`);

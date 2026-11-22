@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { User, Shield, Star, LogOut, Eye, EyeOff, FileText, ChevronRight, Wand2, Sparkles } from 'lucide-react';
+import { User, Shield, Star, LogOut, Eye, EyeOff, FileText, ChevronRight, Wand2, Sparkles, Crown } from 'lucide-react';
 import { account as pg } from 'virtual:content';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -533,6 +533,60 @@ export default function AccountPage() {
             <AstrologyTab userId={user.id} />
           </TabsContent>
         </Tabs>
+
+        {/* ── Platform Owner section — visible only to role=owner ── */}
+        {(user as { platformRole?: string }).platformRole === 'owner' && (
+          <div className="mt-6 mb-2 rounded-2xl border overflow-hidden"
+            style={{ borderColor: 'hsl(var(--primary) / 0.5)', background: 'hsl(var(--card))' }}>
+            {/* Header bar */}
+            <div className="px-5 py-4 flex items-center gap-3"
+              style={{ background: 'hsl(var(--primary) / 0.08)', borderBottom: '1px solid hsl(var(--primary) / 0.2)' }}>
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+                style={{ background: 'hsl(var(--primary) / 0.18)' }}>
+                <Crown className="w-5 h-5" style={{ color: 'hsl(var(--primary))' }} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold tracking-wide" style={{ color: 'hsl(var(--primary))' }}>
+                  Platform Administration
+                </p>
+                <p className="text-xs text-muted-foreground">Account Role: Platform Owner · Full Administrative Access</p>
+              </div>
+            </div>
+
+            {/* Open Admin Dashboard CTA */}
+            <div className="px-5 py-4">
+              <Link to="/admin/dashboard">
+                <Button className="w-full font-semibold text-sm py-3"
+                  style={{ background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))' }}>
+                  <Crown className="w-4 h-4 mr-2" />
+                  Open Admin Dashboard
+                </Button>
+              </Link>
+            </div>
+
+            {/* Owner-only admin links */}
+            <div className="px-5 pb-4 grid grid-cols-1 gap-2">
+              {[
+                { to: '/admin/roles',          icon: <Shield className="w-4 h-4" />,   label: 'Roles & Permissions',      desc: 'Manage member roles and the permission matrix' },
+                { to: '/admin/applications',   icon: <FileText className="w-4 h-4" />, label: 'Member Applications',      desc: 'Review creator and organization applications' },
+                { to: '/admin/community',      icon: <Wand2 className="w-4 h-4" />,    label: 'Community Moderation',     desc: 'Reports, content review, and mod log' },
+                { to: '/admin/community-admin',icon: <Star className="w-4 h-4" />,     label: 'Community Admin Console',  desc: 'Forums, moderator assignments, pinned posts' },
+                { to: '/admin/spells',         icon: <Sparkles className="w-4 h-4" />, label: 'Spells Management',        desc: 'Review and approve submitted spells' },
+              ].map((item) => (
+                <Link key={item.to} to={item.to}
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl border border-border hover:border-primary/40 transition-colors"
+                  style={{ background: 'hsl(var(--muted))' }}>
+                  <span className="flex-shrink-0" style={{ color: 'hsl(var(--primary))' }}>{item.icon}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-foreground">{item.label}</p>
+                    <p className="text-xs text-muted-foreground">{item.desc}</p>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Spellful Plus card — subtle, non-pushy */}
         <div className="mt-6">

@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { Link } from 'react-router';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { motion } from 'motion/react';
 import { Sparkles, BookOpen, Moon, Star, Leaf, Users, ArrowRight, Lock } from 'lucide-react';
@@ -161,7 +161,6 @@ function BenefitRow({ icon: Icon, title, desc, accent }: {
 // ─── Main page ────────────────────────────────────────────────────────────────
 export default function HomePage() {
   const { session } = useSession();
-  const navigate = useNavigate();
   const heroRef = useRef<HTMLDivElement>(null);
   const liveMoon = useLiveMoon();
   const siteUrl = 'https://spellful.com';
@@ -811,8 +810,8 @@ export default function HomePage() {
                     viewport={{ once: true }}
                     transition={{ duration: 0.5, delay: i * 0.08 }}
                   >
-                    <a
-                      href={item.href}
+                    <Link
+                      to={item.href}
                       className="group flex flex-col rounded-2xl overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary transition-all duration-300 no-underline"
                       style={{
                         background: 'hsl(var(--card))',
@@ -823,14 +822,13 @@ export default function HomePage() {
                         textDecoration: 'none',
                       }}
                       onMouseEnter={(e) => {
-                        (e.currentTarget as HTMLAnchorElement).style.borderColor = 'hsl(var(--accent) / 0.45)';
-                        (e.currentTarget as HTMLAnchorElement).style.boxShadow = '0 0 0 1px hsl(var(--accent) / 0.2), 0 8px 32px hsl(var(--accent) / 0.1)';
+                        (e.currentTarget as HTMLElement).style.borderColor = 'hsl(var(--accent) / 0.45)';
+                        (e.currentTarget as HTMLElement).style.boxShadow = '0 0 0 1px hsl(var(--accent) / 0.2), 0 8px 32px hsl(var(--accent) / 0.1)';
                       }}
                       onMouseLeave={(e) => {
-                        (e.currentTarget as HTMLAnchorElement).style.borderColor = 'hsl(var(--border))';
-                        (e.currentTarget as HTMLAnchorElement).style.boxShadow = 'none';
+                        (e.currentTarget as HTMLElement).style.borderColor = 'hsl(var(--border))';
+                        (e.currentTarget as HTMLElement).style.boxShadow = 'none';
                       }}
-                      onClick={(e) => { e.preventDefault(); navigate(item.href); }}
                     >
                       {/* Image — 16:9 on mobile, 3:2 on sm+ */}
                       <div className="aspect-video sm:aspect-[3/2] overflow-hidden shrink-0">
@@ -880,7 +878,7 @@ export default function HomePage() {
                           <ArrowRight size={14} />
                         </span>
                       </div>
-                    </a>
+                    </Link>
                   </motion.div>
                 ))}
               </div>
@@ -889,7 +887,82 @@ export default function HomePage() {
         </section>
 
         {/* ══════════════════════════════════════════════════════════════
-            8. FINAL JOIN CTA — guests only
+            8. SPELLFUL PLUS — all users
+        ══════════════════════════════════════════════════════════════ */}
+        <section className="py-xxl px-6 relative overflow-hidden" style={{ background: 'hsl(var(--card))' }}>
+          {/* Ambient glow */}
+          <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
+            <div className="absolute top-1/2 left-1/4 -translate-x-1/2 -translate-y-1/2 w-80 h-80 rounded-full" style={{ background: 'hsl(var(--primary) / 0.07)', filter: 'blur(90px)' }} />
+            <div className="absolute top-1/2 right-1/4 translate-x-1/2 -translate-y-1/2 w-64 h-64 rounded-full" style={{ background: 'hsl(var(--accent) / 0.06)', filter: 'blur(80px)' }} />
+          </div>
+          <div className="relative max-w-5xl mx-auto">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.7 }}
+              className="text-center mb-12"
+            >
+              <p className="text-xs font-semibold mb-3" style={{ color: 'hsl(var(--primary))', fontFamily: 'var(--font-sans)', letterSpacing: '0.18em' }}>
+                SPELLFUL PLUS
+              </p>
+              <h2 className="mb-4" style={{ fontFamily: 'var(--font-heading)', fontSize: 'clamp(2rem, 4vw, 3rem)', fontWeight: 400, color: 'hsl(var(--foreground))', lineHeight: 1.15 }}>
+                Deepen your practice
+              </h2>
+              <p className="text-sm leading-relaxed mx-auto" style={{ color: 'hsl(var(--muted-foreground))', fontFamily: 'var(--font-sans)', fontWeight: 300, maxWidth: '36rem' }}>
+                Spellful is free forever. Plus unlocks advanced tools for practitioners who want to go deeper — exclusive themes, expanded rituals, and a Supporter badge to show your commitment to the community.
+              </p>
+            </motion.div>
+
+            {/* Benefit tiles */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-12">
+              {[
+                { icon: '✦', title: 'Practice Studio', desc: 'A customizable personal practice home with rearrangeable widgets — tarot, moon phase, journal, and routines your way.' },
+                { icon: '🎨', title: 'Celestial Themes', desc: 'Additional celestial color palettes and alternate dashboard layouts to make Spellful feel uniquely yours.' },
+                { icon: '📅', title: 'Routine Builder Pro', desc: 'Unlimited custom practice routines, flexible reminder schedules, and saved templates.' },
+                { icon: '✦', title: 'Supporter Badge', desc: 'An optional celestial emblem you can choose to display on your profile — showing your support for free spiritual education.' },
+              ].map((tile, i) => (
+                <motion.div
+                  key={tile.title}
+                  initial={{ opacity: 0, y: 16 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.5, delay: i * 0.1 }}
+                  className="rounded-2xl p-6 flex flex-col gap-3"
+                  style={{ background: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }}
+                >
+                  <span className="text-2xl leading-none" aria-hidden="true">{tile.icon}</span>
+                  <p style={{ fontFamily: 'var(--font-heading)', fontSize: '1.1rem', fontWeight: 400, color: 'hsl(var(--foreground))' }}>{tile.title}</p>
+                  <p className="text-xs leading-relaxed" style={{ color: 'hsl(var(--muted-foreground))', fontFamily: 'var(--font-sans)', fontWeight: 300 }}>{tile.desc}</p>
+                </motion.div>
+              ))}
+            </div>
+
+            {/* CTA */}
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+              className="text-center"
+            >
+              <Link
+                to="/plus"
+                className="inline-flex items-center gap-2 px-10 py-4 rounded-full text-sm font-medium transition-all duration-200 hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                style={{ background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))', fontFamily: 'var(--font-sans)', letterSpacing: '0.06em' }}
+              >
+                <Star size={15} />
+                Explore Spellful Plus
+              </Link>
+              <p className="mt-4 text-xs" style={{ color: 'hsl(var(--muted-foreground))', fontFamily: 'var(--font-sans)' }}>
+                Available in the Spellful iOS app · Free tools stay free forever
+              </p>
+            </motion.div>
+          </div>
+        </section>
+
+        {/* ══════════════════════════════════════════════════════════════
+            9. FINAL JOIN CTA — guests only
         ══════════════════════════════════════════════════════════════ */}
         {!session && (
           <section className="py-xxl px-6 relative overflow-hidden" style={{ background: 'hsl(var(--muted))' }}>

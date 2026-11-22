@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { motion, AnimatePresence } from 'motion/react';
-import { signIn, authClient, useSession } from '@/lib/auth/auth-client';
+import { authClient, useSession } from '@/lib/auth/auth-client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -121,7 +121,7 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
     try {
-      const result = await signIn.email({ email, password, rememberMe });
+      const result = await authClient.signIn.email({ email, password, rememberMe });
       if (!result) {
         setError('Something went wrong. Please try again.');
         return;
