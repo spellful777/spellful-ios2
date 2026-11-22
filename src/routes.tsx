@@ -1,5 +1,4 @@
 import { RouteObject } from 'react-router';
-import { lazy } from 'react';
 import HomePage from './pages/index';
 import ResourcesPage from './pages/resources';
 import MoonCalendarPage from './pages/moon-calendar';
@@ -22,6 +21,12 @@ import SanctuaryPage from './pages/sanctuary';
 import SpellsPage from './pages/spells/index';
 import SpellDetailPage from './pages/spells/[slug]';
 import SubmitSpellPage from './pages/spells/submit';
+import AdminDashboardPage from './pages/admin/dashboard';
+import AdminApplicationsPage from './pages/admin/applications';
+import AdminModeratorPage from './pages/admin/moderator';
+import AdminCommunityAdminPage from './pages/admin/community-admin';
+import MyApplicationsPage from './pages/account/applications';
+import PlusPage from './pages/plus';
 import AdminSpellsPage from './pages/admin/spells';
 import AdminCommunityPage from './pages/admin/community';
 import AdminRolesPage from './pages/admin/roles';
@@ -124,6 +129,30 @@ export const routes: RouteObject[] = [
     element: <SpellDetailPage />,
   },
   {
+    path: '/admin/dashboard',
+    element: <AdminDashboardPage />,
+  },
+  {
+    path: '/admin/applications',
+    element: <AdminApplicationsPage />,
+  },
+  {
+    path: '/admin/moderator',
+    element: <AdminModeratorPage />,
+  },
+  {
+    path: '/admin/community-admin',
+    element: <AdminCommunityAdminPage />,
+  },
+  {
+    path: '/account/applications',
+    element: <MyApplicationsPage />,
+  },
+  {
+    path: '/plus',
+    element: <PlusPage />,
+  },
+  {
     path: '/admin/spells',
     element: <AdminSpellsPage />,
   },
@@ -204,12 +233,15 @@ export const routes: RouteObject[] = [
   { path: '/privacy', element: <PrivacyPage /> },
   { path: '/terms', element: <TermsPage /> },
   { path: '/community', element: <CommunityPage /> },
+  // Static community paths MUST come before /community/:slug so React Router
+  // does not match "new", "bookmarks", "notifications", "post", or "discover"
+  // as a :slug param and render the wrong page.
   { path: '/community/new', element: <CommunityNewPage /> },
   { path: '/community/bookmarks', element: <CommunityBookmarksPage /> },
   { path: '/community/notifications', element: <CommunityNotificationsPage /> },
-  { path: '/community/:slug', element: <CommunityCategoryPage /> },
-  { path: '/community/post/:id', element: <CommunityPostPage /> },
   { path: '/community/discover', element: <CommunityDiscoverPage /> },
+  { path: '/community/post/:id', element: <CommunityPostPage /> },
+  { path: '/community/:slug', element: <CommunityCategoryPage /> },
   { path: '/creators', element: <CreatorsPage /> },
   { path: '/organizations', element: <OrganizationsPage /> },
   { path: '/circles', element: <CirclesPage /> },

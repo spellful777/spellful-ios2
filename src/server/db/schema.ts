@@ -1,4 +1,5 @@
 import { mysqlTable, int, tinyint, varchar, text, boolean, timestamp, json, index, uniqueIndex } from 'drizzle-orm/mysql-core';
+// Note: tinyint imported above; used for TINYINT columns
 
 // ─── BetterAuth tables ───────────────────────────────────────────────────────
 export const user = mysqlTable('user', {
@@ -1080,6 +1081,29 @@ export const birthdayReflections = mysqlTable(
   ],
 );
 
+
+// ─── Community Moderator Assignments ─────────────────────────────────────────
+// Forum-scoped moderator and community-admin assignments.
+// A user may hold multiple independent assignments across different forums.
+export const communityModeratorAssignments = mysqlTable(
+  'community_moderator_assignments',
+  {
+    id: int('id').primaryKey().autoincrement(),
+    userId: varchar('user_id', { length: 36 }).notNull().references(() => user.id, { onDelete: 'cascade' }),
+    forumSlug: varchar('forum_slug', { length: 80 }).notNull(), // matches community_categories.slug
+    role: varchar('role', { length: 30 }).notNull().default('moderator'), // moderator | community_admin
+    assignedBy: varchar('assigned_by', { length: 36 }).references(() => user.id, { onDelete: 'set null' }),
+    expiresAt: timestamp('expires_at'),
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
+  },
+  (t) => [
+    uniqueIndex('uq_cma_user_forum').on(t.userId, t.forumSlug),
+    index('idx_cma_user').on(t.userId),
+    index('idx_cma_forum').on(t.forumSlug),
+  ],
+);
+
 // ─── Friend Feed Events ───────────────────────────────────────────────────────
 // eventType: 'birthday' | 'post' | 'milestone' | 'achievement'
 // audience: 'public' | 'followers' | 'coven'
@@ -1125,4 +1149,71 @@ export const friendFeedHidden = mysqlTable(
     createdAt: timestamp('created_at').defaultNow(),
   },
   (t) => [uniqueIndex('uq_feed_hidden').on(t.userId, t.eventId)],
+);
+
+// ─── Spellful Plus Subscriptions ─────────────────────────────────────────────
+// Server-side entitlement record. Never trust client-supplied flags.
+// status: active | grace_period | expired | cancelled | refunded | pending
+// environment: sandbox | production
+export const plusSubscriptions = mysqlTable(
+  'plus_subscriptions',
+  {
+    id: int('id').primaryKey().autoincrement(),
+    userId: varchar('user_id', { length: 36 }).notNull().references(() => user.id, { onDelete: 'cascade' }),
+    appleOriginalTransactionId: varchar('apple_original_transaction_id', { length: 255 }).notNull(),
+    appleProductId: varchar('apple_product_id', { length: 100 }).notNull().default('com.spellful.plus.monthly'),
+    status: varchar('status', { length: 30 }).notNull().default('pending'), // active | grace_period | expired | cancelled | refunded | pending
+    environment: varchar('environment', { length: 20 }).notNull().default('sandbox'), // sandbox | production
+    expiresAt: timestamp('expires_at'),
+    gracePeriodUntil: timestamp('grace_period_until'),
+    cancelledAt: timestamp('cancelled_at'),
+    lastVerifiedAt: timestamp('last_verified_at'),
+    rawNotificationPayload: text('raw_notification_payload'), // last Apple server notification (truncated)
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
+  },
+  (t) => [
+    uniqueIndex('uq_ps_original_txn').on(t.appleOriginalTransactionId),
+    index('idx_ps_user').on(t.userId),
+    index('idx_ps_status').on(t.status),
+    index('idx_ps_expires').on(t.expiresAt),
+  ],
+);
+
+// ─── Spellful Plus Settings ───────────────────────────────────────────────────
+// Per-user opt-in preferences for Plus features.
+// showSupporterBadge defaults to FALSE — subscriber must explicitly opt in.
+export const plusSettings = mysqlTable(
+  'plus_settings',
+  {
+    userId: varchar('user_id', { length: 36 }).primaryKey().references(() => user.id, { onDelete: 'cascade' }),
+    showSupporterBadge: boolean('show_supporter_badge').notNull().default(false),
+    activeTheme: varchar('active_theme', { length: 50 }).notNull().default(''), // plus celestial theme key
+    activeLayout: varchar('active_layout', { length: 30 }).notNull().default(''), // plus layout key
+    practiceWidgetOrder: json('practice_widget_order').$type<string[]>(),
+    updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
+  },
+);
+
+// ─── Practice Routines ────────────────────────────────────────────────────────
+// Free users: max 1 routine. Plus users: unlimited.
+export const practiceRoutines = mysqlTable(
+  'practice_routines',
+  {
+    id: int('id').primaryKey().autoincrement(),
+    userId: varchar('user_id', { length: 36 }).notNull().references(() => user.id, { onDelete: 'cascade' }),
+    name: varchar('name', { length: 100 }).notNull(),
+    description: varchar('description', { length: 300 }).notNull().default(''),
+    steps: json('steps').$type<Array<{ id: string; type: string; label: string; durationMin: number }>>(),
+    reminderEnabled: boolean('reminder_enabled').notNull().default(false),
+    reminderTime: varchar('reminder_time', { length: 10 }).notNull().default(''), // HH:MM
+    reminderDays: json('reminder_days').$type<number[]>(), // 0=Sun … 6=Sat
+    isTemplate: boolean('is_template').notNull().default(false),
+    sortOrder: int('sort_order').notNull().default(0),
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
+  },
+  (t) => [
+    index('idx_pr_user').on(t.userId),
+  ],
 );

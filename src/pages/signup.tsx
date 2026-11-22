@@ -56,6 +56,10 @@ export default function SignupPage() {
     setLoading(true);
     try {
       const result = await signUp.email({ name, email, password });
+      if (!result) {
+        setError('Something went wrong. Please try again.');
+        return;
+      }
       if (result.error) {
         setError(result.error.message ?? 'Could not create account.');
       } else {
@@ -83,8 +87,12 @@ export default function SignupPage() {
     setError('');
     setLoading(true);
     try {
-      const result = await (authClient as unknown as { emailOtp?: { verifyEmail: (opts: { email: string; otp: string }) => Promise<{ error?: { message?: string } }> } }).emailOtp?.verifyEmail({ email, otp });
-      if (result?.error) {
+      const result = await (authClient as unknown as { emailOtp?: { verifyEmail: (opts: { email: string; otp: string }) => Promise<{ error?: { message?: string } } | undefined> } }).emailOtp?.verifyEmail({ email, otp });
+      if (!result) {
+        setError('Something went wrong. Please try again.');
+        return;
+      }
+      if (result.error) {
         setError(result.error.message ?? 'Invalid or expired code.');
       } else {
         await saveSignupMeta();

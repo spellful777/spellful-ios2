@@ -1130,6 +1130,36 @@ export const schemas = {
       })),
       "ZODIAC_SIGNS": z.array(z.string())
     }),
+    app_store_screenshots: z.object({
+      "hero": z.object({
+        "badge": z.string(),
+        "title": z.string(),
+        "subtitle": z.string()
+      }),
+      "toolsNote": z.object({
+        "label": z.string(),
+        "tools": z.string()
+      }),
+      "captionsSectionTitle": z.string(),
+      "captionsSectionNote": z.string(),
+      "footerLink": z.string(),
+      "footerNote": z.string(),
+      "sizes": z.array(z.object({
+        "id": z.string(),
+        "label": z.string(),
+        "size": z.string()
+      })),
+      "screens": z.array(z.object({
+        "id": z.string(),
+        "number": z.string(),
+        "headline": z.string(),
+        "subheadline": z.string(),
+        "description": z.string(),
+        "url": z.string(),
+        "tags": z.string(),
+        "device": z.string()
+      }))
+    }),
     app_store_submission: z.object({
       "hero": z.object({
         "badge": z.string(),
@@ -1857,6 +1887,86 @@ export const schemas = {
       "ctaButton": z.string(),
       "disclaimer": z.string(),
       "reversedLabel": z.string()
+    }),
+    admin_dashboard: z.object({
+      "meta": z.object({
+        "title": z.string(),
+        "description": z.string()
+      }),
+      "heading": z.string(),
+      "subheading": z.string()
+    }),
+    admin_applications: z.object({
+      "meta": z.object({
+        "title": z.string(),
+        "description": z.string()
+      }),
+      "heading": z.string(),
+      "subheading": z.string()
+    }),
+    admin_moderator: z.object({
+      "meta": z.object({
+        "title": z.string(),
+        "description": z.string()
+      }),
+      "heading": z.string(),
+      "subheading": z.string()
+    }),
+    admin_community_admin: z.object({
+      "meta": z.object({
+        "title": z.string(),
+        "description": z.string()
+      }),
+      "heading": z.string(),
+      "subheading": z.string()
+    }),
+    account_applications: z.object({
+      "meta": z.object({
+        "title": z.string(),
+        "description": z.string()
+      }),
+      "heading": z.string(),
+      "subheading": z.string()
+    }),
+    plus: z.object({
+      "meta": z.object({
+        "title": z.string(),
+        "description": z.string()
+      }),
+      "hero": z.object({
+        "headline": z.string(),
+        "subheading": z.string()
+      }),
+      "pricing": z.object({
+        "name": z.string(),
+        "price": z.string(),
+        "billingNote": z.string(),
+        "primaryCta": z.string(),
+        "secondaryCta": z.string()
+      }),
+      "benefits": z.array(z.object({
+        "id": z.string(),
+        "key": z.string(),
+        "title": z.string(),
+        "description": z.string(),
+        "status": z.string(),
+        "icon": z.string()
+      })),
+      "whyFree": z.object({
+        "heading": z.string(),
+        "body": z.string()
+      }),
+      "faq": z.array(z.object({
+        "id": z.string(),
+        "question": z.string(),
+        "answer": z.string()
+      })),
+      "comparison": z.object({
+        "freeLabel": z.string(),
+        "plusLabel": z.string(),
+        "freeItems": z.array(z.string()),
+        "plusItems": z.array(z.string())
+      })
     })
   }
 };

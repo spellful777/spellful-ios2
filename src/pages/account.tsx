@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { useNavigate, Link } from 'react-router';
+import { useNavigate, Link, Navigate } from 'react-router';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { motion, useReducedMotion } from 'motion/react';
 import { useSession, signOut, authClient } from '@/lib/auth/auth-client';
@@ -674,7 +674,7 @@ export default function AccountPage() {
     );
   }
 
-  if (!session) { navigate('/login'); return null; }
+  if (!session) return <Navigate to="/login" replace />;
 
   const user = session.user;
   const initials = user.name?.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) ?? '?';

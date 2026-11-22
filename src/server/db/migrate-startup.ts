@@ -971,6 +971,30 @@ export async function runStartupMigration(): Promise<void> {
       console.error(JSON.stringify({ event: 'startup.migration.birthday_reflections.error', msg: msg.slice(0, 120) }));
     }
 
+
+    // ── community_moderator_assignments table ─────────────────────────────────
+    try {
+      await conn.execute(`
+        CREATE TABLE IF NOT EXISTS community_moderator_assignments (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          user_id VARCHAR(36) NOT NULL,
+          forum_slug VARCHAR(80) NOT NULL,
+          role VARCHAR(30) NOT NULL DEFAULT 'moderator',
+          assigned_by VARCHAR(36) NULL,
+          expires_at TIMESTAMP NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          UNIQUE KEY uq_cma_user_forum (user_id, forum_slug),
+          INDEX idx_cma_user (user_id),
+          INDEX idx_cma_forum (forum_slug),
+          FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE,
+          FOREIGN KEY (assigned_by) REFERENCES user(id) ON DELETE SET NULL
+        )`);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error(JSON.stringify({ event: 'startup.migration.community_moderator_assignments.error', msg: msg.slice(0, 120) }));
+    }
+
     // ── friend_feed_events table ──────────────────────────────────────────────
     try {
       await conn.execute(`
@@ -1024,6 +1048,75 @@ export async function runStartupMigration(): Promise<void> {
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       console.error(JSON.stringify({ event: 'startup.migration.friend_feed_hidden.error', msg: msg.slice(0, 120) }));
+    }
+
+    // ── plus_subscriptions table ──────────────────────────────────────────────
+    try {
+      await conn.execute(`
+        CREATE TABLE IF NOT EXISTS plus_subscriptions (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          user_id VARCHAR(36) NOT NULL,
+          apple_original_transaction_id VARCHAR(255) NOT NULL,
+          apple_product_id VARCHAR(100) NOT NULL DEFAULT 'com.spellful.plus.monthly',
+          status VARCHAR(30) NOT NULL DEFAULT 'pending',
+          environment VARCHAR(20) NOT NULL DEFAULT 'sandbox',
+          expires_at TIMESTAMP NULL,
+          grace_period_until TIMESTAMP NULL,
+          cancelled_at TIMESTAMP NULL,
+          last_verified_at TIMESTAMP NULL,
+          raw_notification_payload TEXT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          UNIQUE KEY uq_ps_original_txn (apple_original_transaction_id),
+          INDEX idx_ps_user (user_id),
+          INDEX idx_ps_status (status),
+          INDEX idx_ps_expires (expires_at),
+          FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE
+        )`);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error(JSON.stringify({ event: 'startup.migration.plus_subscriptions.error', msg: msg.slice(0, 120) }));
+    }
+
+    // ── plus_settings table ───────────────────────────────────────────────────
+    try {
+      await conn.execute(`
+        CREATE TABLE IF NOT EXISTS plus_settings (
+          user_id VARCHAR(36) PRIMARY KEY,
+          show_supporter_badge BOOLEAN NOT NULL DEFAULT FALSE,
+          active_theme VARCHAR(50) NOT NULL DEFAULT '',
+          active_layout VARCHAR(30) NOT NULL DEFAULT '',
+          practice_widget_order JSON NULL,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE
+        )`);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error(JSON.stringify({ event: 'startup.migration.plus_settings.error', msg: msg.slice(0, 120) }));
+    }
+
+    // ── practice_routines table ───────────────────────────────────────────────
+    try {
+      await conn.execute(`
+        CREATE TABLE IF NOT EXISTS practice_routines (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          user_id VARCHAR(36) NOT NULL,
+          name VARCHAR(100) NOT NULL,
+          description VARCHAR(300) NOT NULL DEFAULT '',
+          steps JSON NULL,
+          reminder_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+          reminder_time VARCHAR(10) NOT NULL DEFAULT '',
+          reminder_days JSON NULL,
+          is_template BOOLEAN NOT NULL DEFAULT FALSE,
+          sort_order INT NOT NULL DEFAULT 0,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          INDEX idx_pr_user (user_id),
+          FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE
+        )`);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error(JSON.stringify({ event: 'startup.migration.practice_routines.error', msg: msg.slice(0, 120) }));
     }
 
   } catch (e) {

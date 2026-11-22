@@ -122,6 +122,10 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const result = await signIn.email({ email, password, rememberMe });
+      if (!result) {
+        setError('Something went wrong. Please try again.');
+        return;
+      }
       if (result.error) {
         if (result.error.code === 'TWO_FACTOR_REQUIRED' || result.error.message?.includes('two factor')) {
           setStep('twofa');

@@ -4,7 +4,7 @@ import rateLimit from "express-rate-limit";
 import { fileURLToPath } from "node:url";
 import { isIP } from "node:net";
 import { dirname, extname, join } from "node:path";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 
 // <api-imports>
 import academy__bookmarks__post from "./api/academy/bookmarks/POST";
@@ -43,6 +43,17 @@ import admin__community__posts__id__patch from "./api/admin/community/posts/[id]
 import admin__community__replies__id__patch from "./api/admin/community/replies/[id]/PATCH";
 import admin__community__reports__get from "./api/admin/community/reports/GET";
 import admin__community__reports__id__patch from "./api/admin/community/reports/[id]/PATCH";
+import admin__dashboard__get from "./api/admin/dashboard/GET";
+import admin__moderator__assignments__get from "./api/admin/moderator/assignments/GET";
+import admin__moderator__assignments__post from "./api/admin/moderator/assignments/POST";
+import admin__moderator__assignments__id__delete from "./api/admin/moderator/assignments/[id]/DELETE";
+import admin__moderator__queue__get from "./api/admin/moderator/queue/GET";
+import plus__entitlement__get from "./api/plus/entitlement/GET";
+import plus__settings__patch from "./api/plus/settings/PATCH";
+import plus__apple_notify__post from "./api/plus/apple-notify/POST";
+import plus__verify_purchase__post from "./api/plus/verify-purchase/POST";
+import plus__routines__get from "./api/plus/routines/GET";
+import plus__routines__post from "./api/plus/routines/POST";
 import admin__spells__get from "./api/admin/spells/GET";
 import admin__spells__id__put from "./api/admin/spells/[id]/PUT";
 import auth__action__get from "./api/auth/[action]/GET";
@@ -565,6 +576,18 @@ app.patch("/api/admin/community/posts/:id", admin__community__posts__id__patch);
 app.patch("/api/admin/community/replies/:id", admin__community__replies__id__patch);
 app.get("/api/admin/community/reports", admin__community__reports__get);
 app.patch("/api/admin/community/reports/:id", admin__community__reports__id__patch);
+app.get("/api/admin/dashboard", admin__dashboard__get);
+// ── Spellful Plus ──────────────────────────────────────────────────────────────
+app.get("/api/plus/entitlement", plus__entitlement__get);
+app.patch("/api/plus/settings", plus__settings__patch);
+app.post("/api/plus/apple-notify", plus__apple_notify__post);
+app.post("/api/plus/verify-purchase", plus__verify_purchase__post);
+app.get("/api/plus/routines", plus__routines__get);
+app.post("/api/plus/routines", plus__routines__post);
+app.get("/api/admin/moderator/assignments", admin__moderator__assignments__get);
+app.post("/api/admin/moderator/assignments", admin__moderator__assignments__post);
+app.delete("/api/admin/moderator/assignments/:id", admin__moderator__assignments__id__delete);
+app.get("/api/admin/moderator/queue", admin__moderator__queue__get);
 app.get("/api/admin/spells", admin__spells__get);
 app.put("/api/admin/spells/:id", admin__spells__id__put);
 app.get("/api/auth/:action", auth__action__get);
@@ -880,7 +903,15 @@ app.get("/og-image.png", (_req: Request, res: Response) => {
 	res.redirect(301, "/airo-assets/uploads/pages-og-image-7ff4c824.png");
 });
 
-if (import.meta.env.PROD) {
+// In dev mode, ssrLoadModule evaluates this file with import.meta.env.PROD=true
+// (Vite SSR context). Guard with an existsSync check so the production SSR
+// setup is skipped when dist/client hasn't been built yet, preventing
+// process.exit(1) from crashing the dev server on every API request.
+// Additionally check that we're running from the built bundle (dist/) rather
+// than the source file, since ssrLoadModule runs source files with PROD=true.
+const _ssrClientDir = join(dirname(fileURLToPath(import.meta.url)), "client");
+const _isBuiltBundle = import.meta.url.includes("/dist/");
+if (import.meta.env.PROD && _isBuiltBundle && existsSync(_ssrClientDir)) {
 	const __dirname = dirname(fileURLToPath(import.meta.url));
 	const clientDir = join(__dirname, "client");
 	const adSenseRuntimeConfig = loadAdSenseRuntimeConfig(__dirname);
