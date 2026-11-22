@@ -2,6 +2,10 @@
   "name": "v8-app-template",
   "version": "1.0.0",
   "type": "module",
+  "workspaces": [
+    "content-lib",
+    "content-plugin"
+  ],
   "imports": {
     "#airo/secrets": "./export-plugins/airo-secrets.ts",
     "#airo/auth": "./src/lib/auth/auth.ts"

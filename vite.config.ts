@@ -395,6 +395,7 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
     dedupe: ["react", "react-dom", "react-router"],
     alias: {
       nothing: "/src/fallbacks/missingModule.ts",
+      "@airo/content": path.resolve(__dirname, "./src/lib/content/index.ts"),
       "@/api": path.resolve(__dirname, "./src/server/api"),
       "@": path.resolve(__dirname, "./src")
     }
