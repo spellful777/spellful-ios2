@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { User, Shield, Star, LogOut, Eye, EyeOff, FileText, ChevronRight, Wand2, Sparkles, Crown } from 'lucide-react';
+import { User, Shield, Star, LogOut, Eye, EyeOff, FileText, ChevronRight, Wand2, Sparkles, Crown, AlertTriangle, Trash2, Monitor } from 'lucide-react';
 import { account as pg } from 'virtual:content';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -41,36 +41,10 @@ interface AstroForm {
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function AvatarPicker({ current, onChange }: { current: string; onChange: (url: string) => void }) {
-  return (
-    <div>
-      <p className="text-sm font-medium text-foreground mb-3">{pg.profileTab.avatarPickerTitle}</p>
-      <div className="grid grid-cols-3 gap-3 sm:grid-cols-5">
-        {pg.DEFAULT_AVATARS.map((av) => (
-          <button
-            key={av.id}
-            type="button"
-            onClick={() => onChange(av.url)}
-            className={`relative rounded-xl overflow-hidden border-2 transition-all ${
-              current === av.url ? 'border-primary scale-105' : 'border-border hover:border-primary/50'
-            }`}
-          >
-            <img src={av.url} alt={av.label} className="w-full aspect-square object-cover" />
-            <span className="absolute bottom-0 inset-x-0 bg-black/60 text-white text-[10px] text-center py-0.5 truncate">
-              {av.label}
-            </span>
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 function ProfileTab({ userId }: { userId: string }) {
   const [form, setForm] = useState<ProfileForm>({
     username: '', bio: '', location: '', witchPath: '', visibility: 'public',
   });
-  const [avatarUrl, setAvatarUrl] = useState('');
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
   useEffect(() => {
@@ -85,7 +59,7 @@ function ProfileTab({ userId }: { userId: string }) {
             witchPath: d.profile.witchPath ?? '',
             visibility: d.profile.visibility ?? 'public',
           });
-          setAvatarUrl(d.profile.avatarUrl ?? '');
+
         }
       })
       .catch(() => {});
@@ -98,7 +72,7 @@ function ProfileTab({ userId }: { userId: string }) {
       const res = await fetch('/api/account/profile', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, avatarUrl }),
+        body: JSON.stringify({ ...form }),
       });
       setStatus(res.ok ? 'saved' : 'error');
       if (res.ok) setTimeout(() => setStatus('idle'), 2500);
@@ -114,23 +88,18 @@ function ProfileTab({ userId }: { userId: string }) {
 
   return (
     <form onSubmit={handleSave} className="space-y-8">
-      {/* Avatar */}
-      <Card className="bg-card border-border">
-        <CardHeader>
-          <CardTitle className="text-base text-foreground">{pg.profileTab.sectionTitle}</CardTitle>
-          <p className="text-sm text-muted-foreground">{pg.profileTab.uploadHint}</p>
-          <p className="text-xs text-muted-foreground">{pg.profileTab.uploadConstraints}</p>
-        </CardHeader>
-        <CardContent>
-          {avatarUrl && (
-            <div className="mb-4 flex items-center gap-4">
-              <img src={avatarUrl} alt="Current avatar" className="w-16 h-16 rounded-full object-cover border-2 border-primary/40" />
-              <span className="text-sm text-muted-foreground">Current avatar</span>
-            </div>
-          )}
-          <AvatarPicker current={avatarUrl} onChange={setAvatarUrl} />
-        </CardContent>
-      </Card>
+      {/* Profile Studio link — avatar & cover are managed there */}
+      <a
+        href="/account/profile"
+        className="flex items-center justify-between gap-3 rounded-xl px-4 py-3 border transition-colors hover:border-primary/60"
+        style={{ background: 'hsl(var(--muted))', borderColor: 'hsl(var(--border))' }}
+      >
+        <div>
+          <p className="text-sm font-medium text-foreground">Avatar, cover &amp; appearance</p>
+          <p className="text-xs text-muted-foreground">Choose your avatar, cover photo, theme, and accent color in Profile Studio</p>
+        </div>
+        <svg className="w-4 h-4 shrink-0 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
+      </a>
 
       {/* Public profile */}
       <Card className="bg-card border-border">
@@ -225,11 +194,40 @@ function ProfileTab({ userId }: { userId: string }) {
   );
 }
 
+interface SessionRow {
+  id: string;
+  userAgent?: string | null;
+  ipAddress?: string | null;
+  createdAt?: string | null;
+  expiresAt?: string | null;
+  isCurrent?: boolean;
+}
+
 function SecurityTab() {
   const [pwForm, setPwForm] = useState<PasswordForm>({ current: '', next: '', confirm: '' });
   const [showPw, setShowPw] = useState(false);
   const [pwStatus, setPwStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [pwError, setPwError] = useState('');
+
+  // Sessions
+  const [sessions, setSessions] = useState<SessionRow[]>([]);
+  const [sessionsLoading, setSessionsLoading] = useState(true);
+  const [revoking, setRevoking] = useState<string | null>(null);
+
+  // Account deletion
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleteStatus, setDeleteStatus] = useState<'idle' | 'pending' | 'requested' | 'error'>('idle');
+  const [deleteError, setDeleteError] = useState('');
+  const [scheduledDeletion, setScheduledDeletion] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch('/api/account/sessions', { credentials: 'include' })
+      .then((r) => r.json())
+      .then((d: { sessions?: SessionRow[] }) => { setSessions(d.sessions ?? []); })
+      .catch(() => {})
+      .finally(() => setSessionsLoading(false));
+  }, []);
 
   async function handlePasswordChange(e: React.FormEvent) {
     e.preventDefault();
@@ -254,13 +252,62 @@ function SecurityTab() {
         setPwForm({ current: '', next: '', confirm: '' });
         setTimeout(() => setPwStatus('idle'), 2500);
       } else {
-        const d = await res.json().catch(() => ({}));
-        setPwError(d.message ?? 'Failed to update password.');
+        const d = await res.json().catch(() => ({})) as { message?: string; error?: string };
+        setPwError(d.message ?? d.error ?? 'Failed to update password.');
         setPwStatus('error');
       }
     } catch {
       setPwError('Network error. Please try again.');
       setPwStatus('error');
+    }
+  }
+
+  async function revokeSession(id: string) {
+    setRevoking(id);
+    try {
+      await fetch(`/api/account/sessions/${id}`, { method: 'DELETE', credentials: 'include' });
+      setSessions((s) => s.filter((x) => x.id !== id));
+    } catch {
+      // silently ignore
+    } finally {
+      setRevoking(null);
+    }
+  }
+
+  async function handleDeleteRequest(e: React.FormEvent) {
+    e.preventDefault();
+    setDeleteError('');
+    setDeleteStatus('pending');
+    try {
+      const res = await fetch('/api/account/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: deletePassword }),
+        credentials: 'include',
+      });
+      const d = await res.json().catch(() => ({})) as { ok?: boolean; scheduledDeletionAt?: string; error?: string };
+      if (res.ok && d.ok) {
+        setDeleteStatus('requested');
+        setScheduledDeletion(d.scheduledDeletionAt ?? null);
+        setDeletePassword('');
+        setShowDeleteConfirm(false);
+      } else {
+        setDeleteError(d.error ?? 'Failed to request deletion. Check your password.');
+        setDeleteStatus('error');
+      }
+    } catch {
+      setDeleteError('Network error. Please try again.');
+      setDeleteStatus('error');
+    }
+  }
+
+  async function handleCancelDeletion() {
+    try {
+      await fetch('/api/account/delete', { method: 'DELETE', credentials: 'include' });
+      setDeleteStatus('idle');
+      setScheduledDeletion(null);
+    } catch {
+      // silently ignore
     }
   }
 
@@ -329,7 +376,143 @@ function SecurityTab() {
           <CardTitle className="text-base text-foreground">{pg.securityTab.sessionsSectionTitle}</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground">{pg.securityTab.noSessionsLoadedText}</p>
+          {sessionsLoading ? (
+            <p className="text-sm text-muted-foreground">Loading sessions…</p>
+          ) : sessions.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No other active sessions.</p>
+          ) : (
+            <ul className="space-y-3">
+              {sessions.map((s) => (
+                <li key={s.id} className="flex items-start justify-between gap-3 rounded-lg border border-border bg-muted/40 px-3 py-2.5">
+                  <div className="flex items-start gap-2 min-w-0">
+                    <Monitor className="w-4 h-4 mt-0.5 shrink-0 text-muted-foreground" />
+                    <div className="min-w-0">
+                      <p className="text-xs text-foreground truncate">
+                        {s.userAgent ?? 'Unknown device'}
+                        {s.isCurrent && (
+                          <span className="ml-1.5 text-[10px] font-medium px-1.5 py-0.5 rounded-full"
+                            style={{ background: 'hsl(var(--primary) / 0.15)', color: 'hsl(var(--primary))' }}>
+                            current
+                          </span>
+                        )}
+                      </p>
+                      {s.ipAddress && <p className="text-xs text-muted-foreground">{s.ipAddress}</p>}
+                      {s.createdAt && (
+                        <p className="text-xs text-muted-foreground">
+                          Started {new Date(s.createdAt).toLocaleDateString()}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  {!s.isCurrent && (
+                    <button
+                      type="button"
+                      onClick={() => revokeSession(s.id)}
+                      disabled={revoking === s.id}
+                      className="shrink-0 text-xs text-destructive hover:underline disabled:opacity-50"
+                    >
+                      {revoking === s.id ? 'Revoking…' : 'Revoke'}
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ── Delete Account ─────────────────────────────────────────────────────── */}
+      <Card className="bg-card border-destructive/30">
+        <CardHeader>
+          <CardTitle className="text-base text-destructive flex items-center gap-2">
+            <Trash2 className="w-4 h-4" />
+            Delete Account
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {deleteStatus === 'requested' ? (
+            <div className="rounded-lg border border-warning/40 bg-warning/10 p-4 space-y-3">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" style={{ color: 'hsl(var(--warning))' }} />
+                <div>
+                  <p className="text-sm font-medium text-foreground">Account deletion scheduled</p>
+                  {scheduledDeletion && (
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Your account will be permanently deleted on{' '}
+                      <strong>{new Date(scheduledDeletion).toLocaleDateString()}</strong> unless you cancel.
+                    </p>
+                  )}
+                </div>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCancelDeletion}
+                className="border-border text-foreground"
+              >
+                Cancel deletion
+              </Button>
+            </div>
+          ) : (
+            <>
+              <p className="text-sm text-muted-foreground">
+                Permanently delete your Spellful account and all associated data. This action schedules deletion
+                in 30 days — you can cancel within that window by signing back in.
+              </p>
+              {!showDeleteConfirm ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="border-destructive/50 text-destructive hover:bg-destructive/10"
+                >
+                  <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+                  Request account deletion
+                </Button>
+              ) : (
+                <form onSubmit={handleDeleteRequest} className="space-y-3 max-w-sm">
+                  <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3">
+                    <p className="text-xs text-destructive font-medium flex items-center gap-1.5">
+                      <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                      This will schedule permanent deletion of your account in 30 days.
+                    </p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="delete-pw" className="text-sm">Confirm your password</Label>
+                    <Input
+                      id="delete-pw"
+                      type="password"
+                      value={deletePassword}
+                      onChange={(e) => setDeletePassword(e.target.value)}
+                      className="bg-muted border-border"
+                      placeholder="Enter your current password"
+                      required
+                      autoComplete="current-password"
+                    />
+                  </div>
+                  {deleteError && <p className="text-sm text-destructive">{deleteError}</p>}
+                  <div className="flex gap-2">
+                    <Button
+                      type="submit"
+                      size="sm"
+                      disabled={deleteStatus === 'pending' || !deletePassword}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      {deleteStatus === 'pending' ? 'Requesting…' : 'Confirm deletion'}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => { setShowDeleteConfirm(false); setDeleteError(''); setDeletePassword(''); setDeleteStatus('idle'); }}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </form>
+              )}
+            </>
+          )}
         </CardContent>
       </Card>
     </div>

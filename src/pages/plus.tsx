@@ -7,7 +7,7 @@ import { useState, useEffect } from 'react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { Link } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
-import { Check, ChevronDown, ChevronUp, Sparkles, RotateCcw } from 'lucide-react';
+import { Check, ChevronDown, ChevronUp, Sparkles, RotateCcw, Lock, ImageIcon, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useSession } from '@/lib/auth/auth-client';
 import { plus } from 'virtual:content';
@@ -90,6 +90,326 @@ const FEATURE_TABS = [
     detail: 'Showing your support for free spiritual education — always opt-in, never required, never intrusive.',
   },
 ] as const;
+
+// ── Profile Studio Preview ─────────────────────────────────────────────────────
+
+const PREVIEW_BANNERS: ReadonlyArray<{ id: string; label: string; free: boolean; gradient: string; image?: string; upload?: true }> = [
+  { id: 'upload',   label: 'Upload your own', free: false, gradient: '', upload: true },
+  { id: 'custom',   label: 'Custom Photo',    free: false, gradient: '', image: '/airo-assets/images/pages/home/community-banner' },
+  { id: 'midnight', label: 'Midnight',        free: false, gradient: 'linear-gradient(135deg, hsl(248 60% 12%) 0%, hsl(270 55% 18%) 50%, hsl(248 60% 12%) 100%)' },
+  { id: 'aurora',   label: 'Aurora',          free: false, gradient: 'linear-gradient(135deg, hsl(180 60% 12%) 0%, hsl(259 55% 20%) 50%, hsl(320 50% 18%) 100%)' },
+  { id: 'ember',    label: 'Ember',           free: false, gradient: 'linear-gradient(135deg, hsl(20 60% 14%) 0%, hsl(350 55% 20%) 50%, hsl(270 50% 16%) 100%)' },
+  { id: 'forest',   label: 'Forest',          free: false, gradient: 'linear-gradient(135deg, hsl(140 40% 10%) 0%, hsl(180 45% 14%) 50%, hsl(259 40% 14%) 100%)' },
+  { id: 'free',     label: 'Default',         free: true,  gradient: 'linear-gradient(135deg, hsl(248 41% 10%) 0%, hsl(251 39% 14%) 100%)' },
+];
+
+const PREVIEW_ACCENTS = [
+  { id: 'gold',     varName: '--preview-accent-gold',     free: false },
+  { id: 'lavender', varName: '--preview-accent-lavender', free: false },
+  { id: 'rose',     varName: '--preview-accent-rose',     free: false },
+  { id: 'sage',     varName: '--preview-accent-sage',     free: false },
+  { id: 'free',     varName: '--preview-accent-free',     free: true  },
+] as const;
+
+const PREVIEW_FRAMES = [
+  { id: 'moon',  label: '🌙', free: false },
+  { id: 'stars', label: '✦',  free: false },
+  { id: 'vines', label: '🌿', free: false },
+  { id: 'none',  label: '○',  free: true  },
+] as const;
+
+function ProfileStudioPreview() {
+  const [banner, setBanner] = useState<string>('free');
+  const [accentId, setAccentId] = useState<string>('free');
+  const [frame, setFrame] = useState<string>('none');
+  const [activeTab, setActiveTab] = useState<'banner' | 'accent' | 'frame'>('banner');
+
+  const currentBanner = PREVIEW_BANNERS.find((b) => b.id === banner) ?? PREVIEW_BANNERS[PREVIEW_BANNERS.length - 1];
+  const currentAccent = PREVIEW_ACCENTS.find((a) => a.id === accentId) ?? PREVIEW_ACCENTS[4];
+  const currentFrame  = PREVIEW_FRAMES.find((f) => f.id === frame)   ?? PREVIEW_FRAMES[3];
+
+  const accentCss = `hsl(var(${currentAccent.varName}))`;
+  const accentAlpha = (opacity: number) => `hsl(var(${currentAccent.varName}) / ${opacity})`;
+
+  const isPlus = !currentBanner.free || !currentAccent.free || !currentFrame.free;
+
+  return (
+    <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid hsl(var(--primary) / 0.25)', background: 'hsl(var(--card))' }}>
+      {/* Mock profile card */}
+      <div className="relative">
+        {/* Banner */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={banner}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.4 }}
+            className="h-28 w-full relative overflow-hidden flex items-center justify-center"
+            style={currentBanner.image ? undefined : { background: currentBanner.upload ? 'hsl(var(--muted))' : currentBanner.gradient }}
+          >
+            {currentBanner.image && (
+              <img
+                src={currentBanner.image}
+                alt="Custom profile banner"
+                className="absolute inset-0 w-full h-full object-cover"
+                loading="lazy"
+              />
+            )}
+            {currentBanner.upload && (
+              <div className="flex flex-col items-center gap-1.5 pointer-events-none"
+                style={{ border: '1.5px dashed hsl(var(--border))', borderRadius: '8px', padding: '10px 18px' }}>
+                <Upload className="w-4 h-4" style={{ color: 'hsl(var(--muted-foreground))' }} />
+                <span className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>Your photo here</span>
+              </div>
+            )}
+          </motion.div>
+        </AnimatePresence>
+
+        {/* Avatar */}
+        <div className="absolute left-5 -bottom-8">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={frame}
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ duration: 0.25 }}
+              className="w-16 h-16 rounded-full flex items-center justify-center"
+              style={{
+                background: currentFrame.free
+                  ? 'hsl(var(--card))'
+                  : `conic-gradient(${accentCss} 0deg, hsl(var(--card)) 180deg, ${accentCss} 360deg)`,
+                padding: currentFrame.free ? '2px' : '3px',
+              }}
+            >
+              <div className="w-full h-full rounded-full flex items-center justify-center text-2xl"
+                style={{ background: 'hsl(var(--muted))' }}>
+                🧙
+              </div>
+            </motion.div>
+          </AnimatePresence>
+        </div>
+
+        {/* Plus badge indicator */}
+        <AnimatePresence>
+          {isPlus && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              className="absolute top-3 right-3 flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium"
+              style={{ background: 'hsl(var(--primary) / 0.9)', color: 'hsl(var(--primary-foreground))' }}
+            >
+              <SupporterBadgeIcon size={10} />
+              Plus
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* Profile info */}
+      <div className="px-5 pt-10 pb-5">
+        <div className="flex items-center gap-2 mb-1">
+          <span className="font-bold text-sm" style={{ fontFamily: 'var(--font-heading)', color: 'hsl(var(--foreground))' }}>
+            @moonwitch
+          </span>
+          <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'hsl(var(--muted))', color: 'hsl(var(--muted-foreground))' }}>
+            she/her
+          </span>
+        </div>
+        <p className="text-xs mb-3" style={{ color: 'hsl(var(--muted-foreground))' }}>
+          Lunar witch · Crystal healer · Tarot reader ✨
+        </p>
+
+        {/* Accent-colored tags */}
+        <div className="flex flex-wrap gap-1.5 mb-4">
+          {['Moon Magic', 'Crystals', 'Tarot'].map((tag) => (
+            <motion.span
+              key={tag}
+              animate={{ borderColor: accentAlpha(0.4), color: accentCss, background: accentAlpha(0.12) }}
+              transition={{ duration: 0.3 }}
+              className="text-xs px-2.5 py-0.5 rounded-full border"
+            >
+              {tag}
+            </motion.span>
+          ))}
+        </div>
+
+        {/* Action buttons styled with accent */}
+        <div className="flex gap-2">
+          <motion.button
+            animate={{ background: accentCss, color: 'hsl(var(--foreground))' }}
+            transition={{ duration: 0.3 }}
+            className="flex-1 py-1.5 rounded-lg text-xs font-medium"
+          >
+            Add to Coven
+          </motion.button>
+          <button className="flex-1 py-1.5 rounded-lg text-xs font-medium border"
+            style={{ borderColor: 'hsl(var(--border))', color: 'hsl(var(--muted-foreground))' }}>
+            Message
+          </button>
+        </div>
+      </div>
+
+      {/* Controls */}
+      <div className="border-t px-5 py-4 space-y-4" style={{ borderColor: 'hsl(var(--border))' }}>
+        {/* Tab selector */}
+        <div className="flex gap-1 p-1 rounded-xl" style={{ background: 'hsl(var(--muted))' }}>
+          {(['banner', 'accent', 'frame'] as const).map((t) => (
+            <button
+              key={t}
+              onClick={() => setActiveTab(t)}
+              className="flex-1 py-1.5 rounded-lg text-xs font-medium transition-all capitalize"
+              style={{
+                background: activeTab === t ? 'hsl(var(--card))' : 'transparent',
+                color: activeTab === t ? 'hsl(var(--foreground))' : 'hsl(var(--muted-foreground))',
+              }}
+            >
+              {t === 'banner' ? 'Banner' : t === 'accent' ? 'Accent' : 'Frame'}
+            </button>
+          ))}
+        </div>
+
+        {/* Banner picker */}
+        {activeTab === 'banner' && (
+          <div className="flex gap-2 flex-wrap">
+            {PREVIEW_BANNERS.map((b) => (
+              <button
+                key={b.id}
+                onClick={() => setBanner(b.id)}
+                title={b.label}
+                className="relative w-10 h-7 rounded-lg transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary overflow-hidden flex items-center justify-center"
+                style={{
+                  background: b.image ? undefined : b.upload ? 'hsl(var(--muted))' : b.gradient,
+                  border: b.upload ? '1.5px dashed hsl(var(--border))' : undefined,
+                  outline: banner === b.id ? `2px solid ${accentCss}` : '2px solid transparent',
+                  outlineOffset: '2px',
+                }}
+              >
+                {/* Upload swatch */}
+                {b.upload && (
+                  <Upload className="w-3 h-3" style={{ color: 'hsl(var(--muted-foreground))' }} />
+                )}
+                {/* Photo banner swatch — show actual image thumbnail */}
+                {b.image && (
+                  <>
+                    <img src={b.image} alt={b.label} className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
+                    <span className="absolute inset-0 flex items-center justify-center"
+                      style={{ background: 'hsl(var(--background) / 0.35)' }}>
+                      <ImageIcon className="w-3 h-3" style={{ color: 'hsl(var(--foreground))' }} />
+                    </span>
+                  </>
+                )}
+                {!b.free && (
+                  <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full flex items-center justify-center"
+                    style={{ background: 'hsl(var(--primary))' }}>
+                    <Lock className="w-2 h-2" style={{ color: 'hsl(var(--primary-foreground))' }} />
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Accent picker */}
+        {activeTab === 'accent' && (
+          <div className="flex gap-2 flex-wrap">
+            {PREVIEW_ACCENTS.map((a) => (
+              <button
+                key={a.id}
+                onClick={() => setAccentId(a.id)}
+                title={a.id}
+                className="relative w-8 h-8 rounded-full transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                style={{
+                  background: `hsl(var(${a.varName}))`,
+                  outline: accentId === a.id ? `2px solid hsl(var(${a.varName}))` : '2px solid transparent',
+                  outlineOffset: '3px',
+                }}
+              >
+                {!a.free && (
+                  <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full flex items-center justify-center"
+                    style={{ background: 'hsl(var(--primary))' }}>
+                    <Lock className="w-2 h-2" style={{ color: 'hsl(var(--primary-foreground))' }} />
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Frame picker */}
+        {activeTab === 'frame' && (
+          <div className="flex gap-3 flex-wrap">
+            {PREVIEW_FRAMES.map((f) => {
+              const FRAME_PATHS: Record<string, string> = {
+                moon:      'M8,4 Q12,0 16,4 Q20,8 16,12 Q12,16 8,12 Q4,8 8,4 M4,0 L4,2 M20,0 L20,2 M0,8 L2,8 M22,8 L24,8',
+                stars:     'M12,2 L13.5,8 L19,8 L14.5,11.5 L16,17 L12,13.5 L8,17 L9.5,11.5 L5,8 L10.5,8 Z',
+                vines:     'M12,2 Q14,6 12,10 Q10,6 12,2 M6,6 Q10,8 10,12 Q6,10 6,6 M18,6 Q14,8 14,12 Q18,10 18,6',
+              };
+              const framePath = FRAME_PATHS[f.id];
+              return (
+                <button
+                  key={f.id}
+                  onClick={() => setFrame(f.id)}
+                  className="relative flex flex-col items-center gap-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg p-1 transition-all"
+                  style={{
+                    background: frame === f.id ? `${accentCss}18` : 'transparent',
+                    outline: frame === f.id ? `2px solid ${accentCss}` : '2px solid transparent',
+                    outlineOffset: '2px',
+                  }}
+                >
+                  {/* Mini avatar with frame */}
+                  <div className="relative w-10 h-10">
+                    <div
+                      className="w-10 h-10 rounded-full flex items-center justify-center text-base"
+                      style={{
+                        background: f.free
+                          ? 'hsl(var(--card))'
+                          : `conic-gradient(${accentCss} 0deg, hsl(var(--card)) 180deg, ${accentCss} 360deg)`,
+                        padding: f.free ? '2px' : '2.5px',
+                      }}
+                    >
+                      <div className="w-full h-full rounded-full flex items-center justify-center"
+                        style={{ background: 'hsl(var(--muted))', fontSize: '14px' }}>
+                        🧙
+                      </div>
+                    </div>
+                    {framePath && (
+                      <svg
+                        width="48" height="48"
+                        viewBox="0 0 24 24"
+                        className="absolute pointer-events-none"
+                        style={{ top: -4, left: -4, zIndex: 2 }}
+                        aria-hidden="true"
+                      >
+                        <path d={framePath} fill="none" stroke={`${accentCss}`} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    )}
+                    {!f.free && (
+                      <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full flex items-center justify-center z-10"
+                        style={{ background: 'hsl(var(--primary))' }}>
+                        <Lock className="w-2 h-2" style={{ color: 'hsl(var(--primary-foreground))' }} />
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-[10px]" style={{ color: frame === f.id ? accentCss : 'hsl(var(--muted-foreground))' }}>
+                    {f.id === 'none' ? 'None' : f.id.charAt(0).toUpperCase() + f.id.slice(1)}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        <p className="text-xs text-center" style={{ color: 'hsl(var(--muted-foreground))' }}>
+          <Lock className="w-3 h-3 inline mr-1 opacity-60" />
+          Locked options unlock with Spellful Plus
+        </p>
+      </div>
+    </div>
+  );
+}
 
 // ── Purchase CTA block ─────────────────────────────────────────────────────────
 
@@ -366,6 +686,29 @@ export default function PlusPage() {
               </p>
             </motion.div>
           </AnimatePresence>
+        </section>
+
+        {/* ── Section 2b: Profile Studio Preview ── */}
+        <section className="py-12 px-4 max-w-sm mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }} transition={{ duration: 0.5, ease: 'easeOut' as const }}
+            className="text-center mb-8"
+          >
+            <h2 className="text-2xl md:text-3xl font-bold mb-3"
+              style={{ fontFamily: 'var(--font-heading)', color: 'hsl(var(--foreground))' }}>
+              Your Profile, Your Way
+            </h2>
+            <p className="text-sm text-muted-foreground max-w-xs mx-auto">
+              Try the advanced profile editor below — see exactly what Plus unlocks.
+            </p>
+          </motion.div>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }} transition={{ duration: 0.5, delay: 0.1, ease: 'easeOut' as const }}
+          >
+            <ProfileStudioPreview />
+          </motion.div>
         </section>
 
         {/* ── Section 3: Free vs Plus ── */}

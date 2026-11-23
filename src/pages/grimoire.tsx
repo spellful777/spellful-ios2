@@ -544,7 +544,7 @@ export default function GrimoirePage() {
       if (showFavorites) params.set('favorites', 'true');
       if (search) params.set('search', search);
       params.set('page', String(pageNum));
-      const res = await fetch(`/api/grimoire?${params}`);
+      const res = await fetch(`/api/grimoire?${params}`, { credentials: 'include' });
       if (res.ok) {
         const data = await res.json() as { entries: GrimoireEntry[]; pagination: { hasMore: boolean; total: number; page: number } };
         // Handle both old array response and new paginated response
@@ -588,12 +588,14 @@ export default function GrimoirePage() {
       await fetch(`/api/grimoire/${editingEntry.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify(data),
       });
     } else {
       await fetch('/api/grimoire', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify(data),
       });
     }
@@ -602,7 +604,7 @@ export default function GrimoirePage() {
   }
 
   async function handleDelete(id: number) {
-    await fetch(`/api/grimoire/${id}`, { method: 'DELETE' });
+    await fetch(`/api/grimoire/${id}`, { method: 'DELETE', credentials: 'include' });
     setDeleteConfirm(null);
     await fetchEntries(1, false);
   }
@@ -611,6 +613,7 @@ export default function GrimoirePage() {
     await fetch(`/api/grimoire/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify({ isFavorite: !current }),
     });
     await fetchEntries(1, false);

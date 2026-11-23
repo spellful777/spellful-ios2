@@ -9,6 +9,7 @@ const VALID_ACCENTS = ['', 'gold', 'lavender', 'rose', 'sage', 'sky', 'ember', '
 const VALID_THEMES = ['', 'celestial', 'forest', 'lunar', 'gothic', 'cottage', 'crystal'];
 const VALID_LAYOUTS = ['compact', 'classic', 'immersive'];
 const VALID_FRAMES = ['', 'moon', 'celestial', 'botanical', 'crystal', 'ornate'];
+const VALID_PRESETS = ['', 'default-hat-black', 'default-hat-blue', 'default-hat-green', 'default-hat-lesbian', 'default-hat-orange', 'default-hat-purple', 'default-hat-rainbow', 'default-hat-red', 'default-hat-trans'];
 
 export default async function handler(req: Request, res: Response) {
   try {
@@ -36,6 +37,7 @@ export default async function handler(req: Request, res: Response) {
       interestTags?: string[];
       socialLinks?: Record<string, string>;
       // Profile 3.0
+      avatarPreset?: string;
       profileTheme?: string;
       avatarFrame?: string;
       practiceLabels?: string[];
@@ -57,7 +59,7 @@ export default async function handler(req: Request, res: Response) {
       sunSign, moonSign, risingSign,
       coverImage, coverPreset, accentColor, pronouns,
       interestTags, socialLinks,
-      profileTheme, avatarFrame, practiceLabels, profileStatus, profileSections,
+      avatarPreset, profileTheme, avatarFrame, practiceLabels, profileStatus, profileSections,
       hideOnlineStatus, profileLayout,
       bioVisibility, locationVisibility, zodiacVisibility, socialLinksVisibility,
     } = body;
@@ -83,6 +85,8 @@ export default async function handler(req: Request, res: Response) {
       return res.status(400).json({ error: 'Invalid profile theme' });
     if (avatarFrame !== undefined && !VALID_FRAMES.includes(avatarFrame))
       return res.status(400).json({ error: 'Invalid avatar frame' });
+    if (avatarPreset !== undefined && !VALID_PRESETS.includes(avatarPreset))
+      return res.status(400).json({ error: 'Invalid avatar preset' });
     if (profileStatus !== undefined && profileStatus.length > 100)
       return res.status(400).json({ error: 'Status must be 100 characters or fewer' });
     if (profileLayout !== undefined && !VALID_LAYOUTS.includes(profileLayout))
@@ -133,6 +137,7 @@ export default async function handler(req: Request, res: Response) {
       ...(interestTags !== undefined ? { interestTags } : {}),
       ...(socialLinks !== undefined ? { socialLinks: cleanSocial } : {}),
       ...(profileTheme !== undefined ? { profileTheme } : {}),
+      ...(avatarPreset !== undefined ? { avatarPreset } : {}),
       ...(avatarFrame !== undefined ? { avatarFrame } : {}),
       ...(practiceLabels !== undefined ? { practiceLabels } : {}),
       ...(profileStatus !== undefined ? { profileStatus } : {}),

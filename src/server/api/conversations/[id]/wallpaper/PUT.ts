@@ -1,14 +1,14 @@
 /**
  * PUT /api/conversations/:id/wallpaper
- * Upserts the calling user's wallpaper preference for this conversation.
+ * Upserts the shared wallpaper preference for this conversation.
+ * Both participants see the same wallpaper — only Coven friends may set it.
  * Body: { themeId?, customImageUrl?, dimAmount?, blurAmount? }
- * Each participant sets their own view independently.
  */
 import type { Request, Response } from 'express';
 import { getAuthSession } from '@/server/lib/auth-session.js';
 import { db } from '@/server/db/client.js';
-import { conversations } from '@/server/db/schema.js';
-import { eq, sql } from 'drizzle-orm';
+import { conversations, covenConnections } from '@/server/db/schema.js';
+import { eq, or, and, sql } from 'drizzle-orm';
 
 const ALLOWED_THEMES = ['default', 'celestial', 'moonlit', 'botanical', 'amethyst', 'minimalist', 'starfield'];
 
@@ -29,6 +29,27 @@ export default async function handler(req: Request<{ id: string }>, res: Respons
   if (!conv) return res.status(404).json({ error: 'Conversation not found' });
   if (conv.p1 !== myId && conv.p2 !== myId) return res.status(403).json({ error: 'Forbidden' });
 
+  const otherId = conv.p1 === myId ? conv.p2 : conv.p1;
+
+  // Coven friends check — only accepted connections may set shared wallpaper
+  const [covenConn] = await db
+    .select({ id: covenConnections.id })
+    .from(covenConnections)
+    .where(
+      and(
+        or(
+          and(eq(covenConnections.requesterId, myId), eq(covenConnections.receiverId, otherId)),
+          and(eq(covenConnections.requesterId, otherId), eq(covenConnections.receiverId, myId)),
+        ),
+        eq(covenConnections.status, 'accepted'),
+      ),
+    )
+    .limit(1);
+
+  if (!covenConn) {
+    return res.status(403).json({ error: 'Wallpaper customization is only available between Coven friends.' });
+  }
+
   const body = req.body as {
     themeId?: string;
     customImageUrl?: string | null;
@@ -45,9 +66,10 @@ export default async function handler(req: Request<{ id: string }>, res: Respons
   const dimAmount = Math.min(100, Math.max(0, Math.round(body.dimAmount ?? 40)));
   const blurAmount = Math.min(20, Math.max(0, Math.round(body.blurAmount ?? 0)));
 
+  // Upsert shared row keyed by conversation_id only
   await db.execute(sql`
-    INSERT INTO messenger_wallpapers (user_id, conversation_id, theme_id, custom_image_url, dim_amount, blur_amount)
-    VALUES (${myId}, ${convId}, ${themeId}, ${customImageUrl}, ${dimAmount}, ${blurAmount})
+    INSERT INTO messenger_wallpapers (conversation_id, theme_id, custom_image_url, dim_amount, blur_amount)
+    VALUES (${convId}, ${themeId}, ${customImageUrl}, ${dimAmount}, ${blurAmount})
     ON DUPLICATE KEY UPDATE
       theme_id = VALUES(theme_id),
       custom_image_url = VALUES(custom_image_url),

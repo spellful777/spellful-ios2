@@ -77,7 +77,7 @@ export async function shareContent(payload: SharePayload): Promise<ShareResult> 
 
   // ── Last resort: open Twitter intent ─────────────────────────────────────
   const twitterUrl =
-    `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}&via=spellful`;
+    `https://x.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}&via=spellful`;
   window.open(twitterUrl, '_blank', 'noopener,noreferrer');
   return { method: 'fallback-open', platform: 'twitter' };
 }

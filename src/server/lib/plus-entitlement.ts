@@ -10,8 +10,11 @@
  *                    ↘ refunded
  */
 import { db } from '@/server/db/client.js';
-import { plusSubscriptions, plusSettings } from '@/server/db/schema.js';
+import { plusSubscriptions, plusSettings, user as userTable } from '@/server/db/schema.js';
 import { eq, and, or, gt, isNull } from 'drizzle-orm';
+
+// Platform roles that receive full Plus access without a subscription
+const ADMIN_ROLES = new Set(['owner', 'admin', 'moderator']);
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -42,6 +45,25 @@ export interface PlusSettingsResult {
  *   - OR status = 'grace_period' AND grace_period_until > NOW()
  */
 export async function getEntitlement(userId: string): Promise<EntitlementResult> {
+  // Admins, moderators, and the owner always have full Plus access
+  const userRows = await db
+    .select({ platformRole: userTable.platformRole })
+    .from(userTable)
+    .where(eq(userTable.id, userId))
+    .limit(1);
+
+  const platformRole = userRows[0]?.platformRole ?? 'member';
+  if (ADMIN_ROLES.has(platformRole)) {
+    return {
+      isPlus: true,
+      isGracePeriod: false,
+      status: 'admin_bypass',
+      expiresAt: null,
+      gracePeriodUntil: null,
+      environment: 'production',
+    };
+  }
+
   const now = new Date();
 
   const rows = await db

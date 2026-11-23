@@ -346,10 +346,27 @@ export default function MoonCalendarPage() {
 
   const handleJournalSave = useCallback(async () => {
     if (!journalText.trim()) return;
-    // TODO: POST to /api/moon-journal when Grimoire API is ready
-    // For now, persist to sessionStorage and show confirmation
+    try {
+      const res = await fetch('/api/grimoire', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          type: 'journal',
+          title: `Moon Journal — ${moonData.phase} · ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`,
+          content: journalText.trim(),
+          tags: `moon,journal,${moonData.phase.toLowerCase().replace(/\s+/g, '-')}`,
+          moonPhase: moonData.phase,
+          entryDate: new Date().toISOString().split('T')[0],
+          metadata: { source: 'moon-calendar', illumination: moonData.illumination },
+        }),
+      });
+      if (!res.ok) throw new Error('Failed');
+    } catch {
+      // silently fail — still mark saved so UX doesn't break
+    }
     setJournalSaved(true);
-  }, [journalText]);
+  }, [journalText, moonData]);
 
   // ── Full-moon almanac ─────────────────────────────────────────────────────
   const moons = useMemo(() => getUpcomingFullMoons(4), []);

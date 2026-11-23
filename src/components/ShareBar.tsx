@@ -53,7 +53,7 @@ function ShareBar({ url, text, label = 'Share your reading', className = '' }: S
   const encodedUrl = encodeURIComponent(url);
   const encodedText = encodeURIComponent(text);
 
-  const twitterHref = `https://twitter.com/intent/tweet?text=${encodedText}&url=${encodedUrl}&via=spellful`;
+  const twitterHref = `https://x.com/intent/tweet?text=${encodedText}&url=${encodedUrl}&via=spellful`;
   const facebookHref = `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`;
 
   async function handleCopy() {

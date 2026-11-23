@@ -1,6 +1,7 @@
 /**
  * GET /api/conversations/:id/wallpaper
- * Returns the calling user's wallpaper preference for this conversation.
+ * Returns the shared wallpaper preference for this conversation.
+ * Both participants see the same wallpaper.
  * Response: { themeId, customImageUrl, dimAmount, blurAmount }
  */
 import type { Request, Response } from 'express';
@@ -29,11 +30,10 @@ export default async function handler(req: Request<{ id: string }>, res: Respons
   const rawResult = await db.execute(sql`
     SELECT theme_id, custom_image_url, dim_amount, blur_amount
     FROM messenger_wallpapers
-    WHERE user_id = ${myId} AND conversation_id = ${convId}
+    WHERE conversation_id = ${convId}
     LIMIT 1
   `) as unknown as [{ theme_id: string; custom_image_url: string | null; dim_amount: number; blur_amount: number }[], unknown];
 
-  // db.execute returns a [rows, fields] tuple — take the first element
   const rows = rawResult[0] as { theme_id: string; custom_image_url: string | null; dim_amount: number; blur_amount: number }[];
 
   if (!rows || rows.length === 0) {

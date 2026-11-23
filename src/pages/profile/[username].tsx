@@ -26,20 +26,27 @@ type Profile = {
   coverImage: string | null;
   coverPreset: string | null;
   accentColor: string | null;
+  profileTheme: string | null;
+  profileLayout: string | null;
   pronouns: string | null;
   interestTags: string[] | null;
   socialLinks: Record<string, string> | null;
 };
 
+interface ProfileStats {
+  covenCount: number;
+  followerCount: number;
+}
+
 // ─── Accent color map ─────────────────────────────────────────────────────────
 const ACCENT_VARS: Record<string, string> = {
   gold:     'hsl(var(--primary))',
   lavender: 'hsl(var(--accent))',
-  rose:     'hsl(var(--footer-lavender))',
+  rose:     'hsl(var(--accent-rose))',
   sage:     'hsl(var(--secondary))',
   sky:      'hsl(var(--info))',
   ember:    'hsl(var(--warning))',
-  violet:   'hsl(var(--footer-lavender))',
+  violet:   'hsl(var(--accent-violet))',
   moon:     'hsl(var(--muted-foreground))',
 };
 
@@ -55,6 +62,16 @@ const COVER_PRESETS: Record<string, string> = {
   forest:   'linear-gradient(135deg, hsl(var(--footer-bg-darkest)) 0%, hsl(var(--secondary) / 0.2) 60%, hsl(var(--muted)) 100%)',
   cosmos:   'linear-gradient(135deg, hsl(var(--background)) 0%, hsl(var(--footer-bg-deep)) 40%, hsl(var(--accent) / 0.3) 100%)',
   rose:     'linear-gradient(135deg, hsl(var(--card-deep)) 0%, hsl(var(--footer-lavender) / 0.35) 60%, hsl(var(--accent) / 0.2) 100%)',
+};
+
+// ─── Theme CSS variable overrides ───────────────────────────────────────────
+const THEME_OVERRIDES: Record<string, React.CSSProperties> = {
+  celestial: { '--profile-accent': 'hsl(var(--accent))',            '--profile-bg': 'hsl(259 39% 10%)' } as React.CSSProperties,
+  forest:    { '--profile-accent': 'hsl(var(--secondary))',         '--profile-bg': 'hsl(120 20% 8%)' } as React.CSSProperties,
+  lunar:     { '--profile-accent': 'hsl(var(--muted-foreground))',  '--profile-bg': 'hsl(248 30% 8%)' } as React.CSSProperties,
+  gothic:    { '--profile-accent': 'hsl(0 0% 80%)',                 '--profile-bg': 'hsl(0 0% 5%)' } as React.CSSProperties,
+  cottage:   { '--profile-accent': 'hsl(var(--secondary))',         '--profile-bg': 'hsl(80 15% 8%)' } as React.CSSProperties,
+  crystal:   { '--profile-accent': 'hsl(var(--primary))',           '--profile-bg': 'hsl(270 30% 9%)' } as React.CSSProperties,
 };
 
 function coverStyle(profile: Profile): React.CSSProperties {
@@ -102,19 +119,21 @@ export default function ProfilePage() {
   const [error, setError] = useState<string | null>(null);
   const [requesting, setRequesting] = useState(false);
   const [blockSheetOpen, setBlockSheetOpen] = useState(false);
+  const [stats, setStats] = useState<ProfileStats>({ covenCount: 0, followerCount: 0 });
 
   useEffect(() => {
     if (!username) return;
     setLoading(true);
     fetch(`/api/profile/${username}`)
       .then(r => r.json())
-      .then((data: { error?: string; profile?: Profile; connectionStatus?: string | null; connectionId?: number | null; isOwn?: boolean }) => {
+      .then((data: { error?: string; profile?: Profile; connectionStatus?: string | null; connectionId?: number | null; isOwn?: boolean; covenCount?: number; followerCount?: number }) => {
         if (data.error) setError(data.error);
         else {
           setProfile(data.profile ?? null);
           setConnectionStatus(data.connectionStatus ?? null);
           setConnectionId(data.connectionId ?? null);
           setIsOwn(data.isOwn ?? false);
+          setStats({ covenCount: data.covenCount ?? 0, followerCount: data.followerCount ?? 0 });
         }
       })
       .catch(() => setError('Failed to load profile'))
@@ -183,6 +202,10 @@ export default function ProfilePage() {
   if (!profile) return null;
 
   const accent = accentColor(profile.accentColor);
+  const themeOverride = THEME_OVERRIDES[profile.profileTheme ?? ''] ?? {};
+  const profileLayout = profile.profileLayout ?? 'classic';
+  const coverHeight = profileLayout === 'immersive' ? '320px' : profileLayout === 'compact' ? '140px' : '220px';
+  const cardMaxWidth = profileLayout === 'immersive' ? '900px' : '672px';
   const displayName = profile.name ?? profile.username ?? 'Witch';
   const initials = displayName.slice(0, 2).toUpperCase();
   const memberYear = profile.createdAt ? new Date(profile.createdAt).getFullYear() : null;
@@ -210,11 +233,11 @@ export default function ProfilePage() {
         <meta name="twitter:image:alt" content="Spellful — Witchcraft, Tarot &amp; Intuitive Resources" />
       </Helmet>
 
-      <main>
+      <main style={themeOverride}>
         {/* ── Cover ──────────────────────────────────────────────────────────── */}
         <div
           className="relative w-full"
-          style={{ ...coverStyle(profile), height: '220px' }}
+          style={{ ...coverStyle(profile), height: coverHeight }}
           aria-hidden="true"
         >
           <div className="absolute inset-0 bg-black/30 pointer-events-none" />
@@ -232,14 +255,14 @@ export default function ProfilePage() {
         </div>
 
         {/* ── Profile card ───────────────────────────────────────────────────── */}
-        <div className="max-w-2xl mx-auto px-4">
+        <div className="mx-auto px-4" style={{ maxWidth: cardMaxWidth }}>
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.45, ease: 'easeOut' as const }}
             className="relative rounded-2xl border"
             style={{
-              background: 'hsl(var(--card))',
+              background: (themeOverride as Record<string, string>)['--profile-bg'] ?? 'hsl(var(--card))',
               borderColor: 'hsl(var(--border))',
               marginTop: '-56px',
               paddingTop: '72px',
@@ -402,6 +425,23 @@ export default function ProfilePage() {
               {memberYear && (
                 <span>Member since {memberYear}</span>
               )}
+            </div>
+
+            {/* Coven & follower counts */}
+            <div className="flex items-center gap-5 mb-4">
+              <div className="text-center">
+                <p className="text-lg font-serif font-bold leading-none" style={{ color: 'hsl(var(--foreground))' }}>
+                  {stats.covenCount}
+                </p>
+                <p className="text-xs mt-0.5" style={{ color: 'hsl(var(--muted-foreground))' }}>Coven</p>
+              </div>
+              <div className="w-px h-8" style={{ background: 'hsl(var(--border))' }} />
+              <div className="text-center">
+                <p className="text-lg font-serif font-bold leading-none" style={{ color: 'hsl(var(--foreground))' }}>
+                  {stats.followerCount}
+                </p>
+                <p className="text-xs mt-0.5" style={{ color: 'hsl(var(--muted-foreground))' }}>Followers</p>
+              </div>
             </div>
 
             {/* Astro signs */}

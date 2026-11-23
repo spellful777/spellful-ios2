@@ -119,6 +119,7 @@ function isTabActive(tab: Tab, pathname: string): boolean {
 // ─── Explore drawer ───────────────────────────────────────────────────────────
 function ExploreDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
   const location = useLocation();
+  const [tappedHref, setTappedHref] = useState<string | null>(null);
 
   // Close on route change
   useEffect(() => {
@@ -232,16 +233,25 @@ function ExploreDrawer({ open, onClose }: { open: boolean; onClose: () => void }
                             borderLeft: isActive ? '2px solid hsl(var(--primary))' : '2px solid transparent',
                           }}
                           aria-current={isActive ? 'page' : undefined}
+                          onClick={() => {
+                            setTappedHref(tool.href);
+                            setTimeout(() => setTappedHref(null), 500);
+                          }}
                         >
-                          <span
+                          <motion.span
                             className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                            animate={tappedHref === tool.href
+                              ? { boxShadow: ['0 0 0px 0px hsl(var(--primary) / 0)', '0 0 12px 4px hsl(var(--primary) / 0.55)', '0 0 0px 0px hsl(var(--primary) / 0)'] }
+                              : { boxShadow: '0 0 0px 0px hsl(var(--primary) / 0)' }
+                            }
+                            transition={{ duration: 0.45, ease: 'easeOut' as const }}
                             style={{
-                              background: isActive ? 'hsl(var(--primary) / 0.18)' : 'hsl(var(--muted))',
-                              color: isActive ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))',
+                              background: isActive || tappedHref === tool.href ? 'hsl(var(--primary) / 0.22)' : 'hsl(var(--muted))',
+                              color: isActive || tappedHref === tool.href ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))',
                             }}
                           >
                             {tool.icon}
-                          </span>
+                          </motion.span>
                           <div className="min-w-0">
                             <p
                               className="text-sm leading-tight"

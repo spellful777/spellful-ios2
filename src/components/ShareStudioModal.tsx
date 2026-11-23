@@ -135,9 +135,15 @@ export default function ShareStudioModal({
 
   const cfg = TYPE_CONFIG[contentType];
   const shareUrl = urlOverride ?? buildShareUrl(contentType as Parameters<typeof buildShareUrl>[0], slug);
-  const shareText = description
-    ? `${title}\n\n${description}`
-    : title;
+
+  // Profile shares get an invite-style message; all other types use the standard format.
+  const shareText = contentType === 'profile'
+    ? (description
+        ? `Follow me on Spellful ✨\n\n${description}\n\n${shareUrl}`
+        : `Join me on Spellful — the home for witches, mystics & magical folk ✨\n\n${shareUrl}`)
+    : (description
+        ? `${title}\n\n${description}`
+        : title);
 
   const payload: SharePayload = {
     title,
@@ -179,7 +185,7 @@ export default function ShareStudioModal({
   }, [shareText]);
 
   const handleTwitter = useCallback(() => {
-    const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}&via=spellful`;
+    const twitterUrl = `https://x.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}&via=spellful`;
     window.open(twitterUrl, '_blank', 'noopener,noreferrer');
   }, [shareText, shareUrl]);
 

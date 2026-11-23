@@ -20,6 +20,7 @@ import { OnlineDot } from '@/components/OnlineDot';
 import { BlockUserSheet } from '@/components/BlockUserSheet';
 import { ReportModal } from '@/components/ReportModal';
 import ShareStudioModal from '@/components/ShareStudioModal';
+import ProfileShareCard from '@/components/ProfileShareCard';
 import { user_profile as pageContent } from 'virtual:content';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -119,9 +120,9 @@ function AvatarFrame({ frame, size }: { frame: string; size: number }) {
 // ─── Accent color map ─────────────────────────────────────────────────────────
 const ACCENT_VARS: Record<string, string> = {
   gold: 'hsl(var(--primary))', lavender: 'hsl(var(--accent))',
-  rose: 'hsl(var(--footer-lavender))', sage: 'hsl(var(--secondary))',
+  rose: 'hsl(var(--accent-rose))', sage: 'hsl(var(--secondary))',
   sky: 'hsl(var(--info))', ember: 'hsl(var(--warning))',
-  violet: 'hsl(var(--footer-lavender))', moon: 'hsl(var(--muted-foreground))',
+  violet: 'hsl(var(--accent-violet))', moon: 'hsl(var(--muted-foreground))',
 };
 function accentColor(key: string | null | undefined): string {
   return ACCENT_VARS[key ?? ''] ?? 'hsl(var(--primary))';
@@ -212,6 +213,7 @@ export default function UserProfilePage() {
   const [guestbookSubmitting, setGuestbookSubmitting] = useState(false);
   const [guestbookMsg, setGuestbookMsg] = useState('');
   const [shareOpen, setShareOpen] = useState(false);
+  const [shareCardOpen, setShareCardOpen] = useState(false);
   const [profileBadges, setProfileBadges] = useState<{ id: number; badgeKey: string; badgeType: string }[]>([]);
   useEffect(() => {
     if (!username) return;
@@ -360,16 +362,16 @@ export default function UserProfilePage() {
   return (
     <>
       <Helmet>
-        <title>@{displayName} — Spellful</title>
-        <meta name="description" content={profile.bio ?? `@${displayName}'s profile on Spellful`} />
-        <meta property="og:title" content={`@${displayName} — Spellful`} />
-        <meta property="og:description" content={profile.bio ?? `@${displayName}'s profile on Spellful`} />
+        <title>{displayName} (@{profile.username ?? ''}) — Spellful</title>
+        <meta name="description" content={profile.bio ?? `${displayName} (@${profile.username ?? ''}) on Spellful`} />
+        <meta property="og:title" content={`${displayName} (@${profile.username ?? ''}) — Spellful`} />
+        <meta property="og:description" content={profile.bio ?? `${displayName} (@${profile.username ?? ''}) on Spellful`} />
         <meta property="og:type" content="profile" />
         <meta property="og:url" content={`https://spellful.com/u/${profile.username ?? ''}`} />
         <meta property="og:image" content="https://spellful.com/airo-assets/uploads/pages-og-image-7ff4c824.png" />
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content={`@${displayName} — Spellful`} />
-        <meta name="twitter:description" content={profile.bio ?? `@${displayName}'s profile on Spellful`} />
+        <meta name="twitter:title" content={`${displayName} (@${profile.username ?? ''}) — Spellful`} />
+        <meta name="twitter:description" content={profile.bio ?? `${displayName} (@${profile.username ?? ''}) on Spellful`} />
         <meta name="twitter:image" content="https://spellful.com/airo-assets/uploads/pages-og-image-7ff4c824.png" />
         {/* Canonical URL */}
         <link rel="canonical" href={`https://spellful.com/u/${profile.username ?? ''}`} />
@@ -399,7 +401,7 @@ export default function UserProfilePage() {
             transition={{ duration: 0.45, ease: 'easeOut' as const }}
             className="relative rounded-2xl border"
             style={{
-              background: 'hsl(var(--card))',
+              background: (themeOverride as Record<string, string>)['--profile-bg'] ?? 'hsl(var(--card))',
               borderColor: 'hsl(var(--border))',
               marginTop: '-56px',
               paddingTop: '72px',
@@ -432,7 +434,7 @@ export default function UserProfilePage() {
             <div className="absolute top-4 right-4 flex items-center gap-2">
               {/* Share profile — visible to everyone */}
               <button
-                onClick={() => setShareOpen(true)}
+                onClick={() => isOwn ? setShareCardOpen(true) : setShareOpen(true)}
                 className="w-8 h-8 rounded-full flex items-center justify-center transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 style={{ background: 'hsl(var(--muted) / 0.85)', color: 'hsl(var(--foreground))' }}
                 aria-label="Share profile"
@@ -514,7 +516,7 @@ export default function UserProfilePage() {
             <div className="space-y-1 mb-4">
               <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="text-2xl font-serif font-bold" style={{ color: 'hsl(var(--foreground))' }}>
-                  @{displayName}
+                  {displayName}
                 </h1>
                 {profile.pronouns && (
                   <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'hsl(var(--muted))', color: 'hsl(var(--muted-foreground))' }}>
@@ -522,6 +524,13 @@ export default function UserProfilePage() {
                   </span>
                 )}
               </div>
+
+              {/* @username handle — secondary line below display name */}
+              {profile.username && (
+                <p className="text-sm font-medium" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                  @{profile.username}
+                </p>
+              )}
 
               {/* Magical Name */}
               {magicalName && (
@@ -638,6 +647,28 @@ export default function UserProfilePage() {
                 ))}
               </div>
             )}
+          </motion.div>
+
+          {/* ── Share profile CTA ────────────────────────────────────────────── */}
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.15, ease: 'easeOut' as const }}
+            className="mt-4"
+          >
+            <button
+              onClick={() => isOwn ? setShareCardOpen(true) : setShareOpen(true)}
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              style={{
+                background: `${accent}18`,
+                border: `1px solid ${accent}40`,
+                color: accent,
+                fontFamily: 'var(--font-sans)',
+              }}
+            >
+              <Share2 className="w-4 h-4" />
+              {isOwn ? 'Share your profile' : `Share ${displayName}'s profile`}
+            </button>
           </motion.div>
 
           {/* ── Modular sections ─────────────────────────────────────────────── */}
@@ -944,7 +975,7 @@ export default function UserProfilePage() {
           )}
         </AnimatePresence>
 
-        {/* ── Share Studio modal ───────────────────────────────────────────────── */}
+        {/* ── Share Studio modal (non-owner) ──────────────────────────────────── */}
         {profile && (
           <ShareStudioModal
             open={shareOpen}
@@ -955,6 +986,68 @@ export default function UserProfilePage() {
             slug={profile.username ?? undefined}
           />
         )}
+
+        {/* ── Profile Share Card sheet (owner only) ────────────────────────────── */}
+        <AnimatePresence>
+          {shareCardOpen && isOwn && profile && (
+            <>
+              {/* Backdrop */}
+              <motion.div
+                key="share-card-backdrop"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="fixed inset-0 z-40"
+                style={{ background: 'hsl(var(--background) / 0.7)', backdropFilter: 'blur(4px)' }}
+                onClick={() => setShareCardOpen(false)}
+              />
+              {/* Bottom sheet */}
+              <motion.div
+                key="share-card-sheet"
+                initial={{ y: '100%' }}
+                animate={{ y: 0 }}
+                exit={{ y: '100%' }}
+                transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] as const }}
+                className="fixed bottom-0 left-0 right-0 z-50 rounded-t-2xl overflow-y-auto"
+                style={{
+                  background: 'hsl(var(--card))',
+                  border: '1px solid hsl(var(--border))',
+                  maxHeight: '90dvh',
+                  paddingBottom: 'env(safe-area-inset-bottom, 16px)',
+                }}
+              >
+                {/* Handle */}
+                <div className="flex justify-center pt-3 pb-1">
+                  <div className="w-10 h-1 rounded-full" style={{ background: 'hsl(var(--muted-foreground) / 0.4)' }} />
+                </div>
+                {/* Header */}
+                <div className="flex items-center justify-between px-5 pb-3" style={{ borderBottom: '1px solid hsl(var(--border))' }}>
+                  <h2 className="font-serif text-base font-semibold" style={{ color: 'hsl(var(--foreground))' }}>
+                    Create image card
+                  </h2>
+                  <button
+                    onClick={() => setShareCardOpen(false)}
+                    className="w-7 h-7 rounded-full flex items-center justify-center"
+                    style={{ background: 'hsl(var(--muted))', color: 'hsl(var(--muted-foreground))' }}
+                    aria-label="Close"
+                  >
+                    ✕
+                  </button>
+                </div>
+                {/* Card generator */}
+                <div className="px-5 py-4">
+                  <ProfileShareCard
+                    username={profile.username ?? ''}
+                    userId={profile.id}
+                    avatarUrl={profile.image}
+                    displayName={profile.name}
+                  />
+                </div>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
 
         {/* ── Block sheet ───────────────────────────────────────────────────────── */}
         {!isOwn && profile && (

@@ -3,6 +3,7 @@ import { db } from '@/server/db/client.js';
 import { user } from '@/server/db/schema.js';
 import { eq } from 'drizzle-orm';
 import { getAuthSession } from '@/server/lib/auth-session.js';
+import { getEntitlement } from '@/server/lib/plus-entitlement.js';
 import busboy from 'busboy';
 import path from 'path';
 import fs from 'fs';
@@ -17,6 +18,12 @@ export default async function handler(req: Request, res: Response) {
     const session = await getAuthSession(req);
     if (!session?.user?.id) return res.status(401).json({ error: 'Unauthorized' });
     const userId = session.user.id;
+
+    // Custom cover photo upload is a Spellful Plus feature
+    const ent = await getEntitlement(userId);
+    if (!ent.isPlus) {
+      return res.status(403).json({ error: 'Custom cover photo requires Spellful Plus.', code: 'PLUS_REQUIRED' });
+    }
 
     await fs.promises.mkdir(UPLOAD_DIR, { recursive: true });
 

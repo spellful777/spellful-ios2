@@ -481,13 +481,22 @@ export default function HoroscopeShareMenu({ horoscope }: Props) {
   const symbol   = SIGN_SYMBOLS[horoscope.sign] ?? '✦';
   const postText = `${symbol} ${horoscope.sign} · ${horoscope.headline}\n\n${horoscope.body.slice(0, 140)}…\n\n✨ Read your full reading at spellful.com`;
 
-  const shareX        = () => { window.open(`https://x.com/intent/tweet?text=${encodeURIComponent(postText)}&url=${encodeURIComponent(url)}`, '_blank'); setOpen(false); };
-  const shareFacebook = () => { window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}&quote=${encodeURIComponent(postText)}`, '_blank'); setOpen(false); };
-  const shareBluesky  = () => { window.open(`https://bsky.app/intent/compose?text=${encodeURIComponent(postText + '\n' + url)}`, '_blank'); setOpen(false); };
-  const shareThreads  = () => { window.open(`https://www.threads.net/intent/post?text=${encodeURIComponent(postText + '\n' + url)}`, '_blank'); setOpen(false); };
+  const trackShare = (platform: string) => {
+    void fetch('/api/horoscope/share', {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sign: horoscope.sign, platform }),
+    });
+  };
+
+  const shareX        = () => { trackShare('x');        window.open(`https://x.com/intent/tweet?text=${encodeURIComponent(postText)}&url=${encodeURIComponent(url)}`, '_blank'); setOpen(false); };
+  const shareFacebook = () => { trackShare('facebook');  window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}&quote=${encodeURIComponent(postText)}`, '_blank'); setOpen(false); };
+  const shareBluesky  = () => { trackShare('bluesky');   window.open(`https://bsky.app/intent/compose?text=${encodeURIComponent(postText + '\n' + url)}`, '_blank'); setOpen(false); };
+  const shareThreads  = () => { trackShare('threads');   window.open(`https://www.threads.net/intent/post?text=${encodeURIComponent(postText + '\n' + url)}`, '_blank'); setOpen(false); };
 
   const downloadStory = async () => {
     setGeneratingStory(true);
+    trackShare('story_download');
     try {
       const blob = await generateStoryCanvas(horoscope);
       const a = document.createElement('a');

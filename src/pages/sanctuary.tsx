@@ -313,6 +313,10 @@ export default function SanctuaryPage() {
       .finally(() => setLoading(false));
   }, [session]);
 
+  // useId must be called unconditionally — before any early returns — to keep
+  // the hook count stable across session state changes (avoids React error #310).
+  const rawId = useId();
+
   if (isPending) {
     return (
       <main className="min-h-screen flex items-center justify-center bg-background">
@@ -327,7 +331,6 @@ export default function SanctuaryPage() {
 
   const firstName = session.user.name?.split(' ')[0] ?? 'Seeker';
   // Stable per-mount event key — prevents double-consumption on re-renders
-  const rawId = useId();
   const eventKey = `${session.user.id}-${rawId.replace(/:/g, '')}`;
   const hasAnyContent =
     summary &&

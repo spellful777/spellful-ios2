@@ -1,12 +1,12 @@
 /**
  * MessengerWallpaperPicker
- * Per-user, per-conversation wallpaper/theme picker for Spellful Messenger.
- * 6 built-in themes + custom image upload. Dimming + blur sliders.
- * Each participant sets their own view independently.
+ * Per-conversation shared wallpaper/theme picker for Spellful Messenger.
+ * Preset themes only — no custom image upload.
+ * Only available between Coven friends; both participants see the same wallpaper.
  */
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Upload, Check, Sliders } from 'lucide-react';
+import { X, Check, Sliders } from 'lucide-react';
 
 // ── Theme definitions ─────────────────────────────────────────────────────────
 
@@ -82,45 +82,19 @@ interface Props {
 
 export default function MessengerWallpaperPicker({ conversationId, current, onClose, onSave }: Props) {
   const [themeId, setThemeId] = useState(current.themeId);
-  const [customImageUrl, setCustomImageUrl] = useState<string | null>(current.customImageUrl);
   const [dimAmount, setDimAmount] = useState(current.dimAmount);
   const [blurAmount, setBlurAmount] = useState(current.blurAmount);
-  const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [showSliders, setShowSliders] = useState(false);
-  const fileRef = useRef<HTMLInputElement>(null);
 
   const activeTheme = MESSENGER_THEMES.find(t => t.id === themeId) ?? MESSENGER_THEMES[0];
-  const isCustom = themeId === 'custom';
-
-  // ── Upload custom image ───────────────────────────────────────────────────
-
-  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploading(true);
-    try {
-      const form = new FormData();
-      form.append('file', file);
-      const res = await fetch('/api/account/avatar', { method: 'POST', credentials: 'include', body: form });
-      if (res.ok) {
-        const data = await res.json() as { url?: string };
-        if (data.url) {
-          setCustomImageUrl(data.url);
-          setThemeId('custom');
-        }
-      }
-    } finally {
-      setUploading(false);
-    }
-  }
 
   // ── Save ─────────────────────────────────────────────────────────────────
 
   async function handleSave() {
     setSaving(true);
     try {
-      const prefs: WallpaperPrefs = { themeId, customImageUrl, dimAmount, blurAmount };
+      const prefs: WallpaperPrefs = { themeId, customImageUrl: null, dimAmount, blurAmount };
       const res = await fetch(`/api/conversations/${conversationId}/wallpaper`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -138,11 +112,9 @@ export default function MessengerWallpaperPicker({ conversationId, current, onCl
 
   // ── Preview background ────────────────────────────────────────────────────
 
-  const previewBgStyle: React.CSSProperties = isCustom && customImageUrl
-    ? { backgroundImage: `url(${customImageUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-    : activeTheme.backgroundStyle
-      ? { background: activeTheme.backgroundStyle }
-      : {};
+  const previewBgStyle: React.CSSProperties = activeTheme.backgroundStyle
+    ? { background: activeTheme.backgroundStyle }
+    : {};
 
   return (
     <motion.div
@@ -233,41 +205,7 @@ export default function MessengerWallpaperPicker({ conversationId, current, onCl
               </button>
             ))}
 
-            {/* Custom upload tile */}
-            <button
-              onClick={() => fileRef.current?.click()}
-              className="flex flex-col items-center gap-1.5 group"
-              aria-label="Upload custom image"
-              disabled={uploading}>
-              <div
-                className="w-full aspect-square rounded-xl relative overflow-hidden transition-transform group-hover:scale-105 flex items-center justify-center"
-                style={{
-                  ...(isCustom && customImageUrl
-                    ? { backgroundImage: `url(${customImageUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-                    : {}),
-                  background: isCustom && customImageUrl ? undefined : 'hsl(var(--muted))',
-                  border: isCustom ? '2px solid hsl(var(--primary))' : '2px dashed hsl(var(--border))',
-                  boxShadow: isCustom ? '0 0 0 2px hsl(var(--primary) / 0.3)' : 'none',
-                }}>
-                {!(isCustom && customImageUrl) && (
-                  <Upload className="w-4 h-4" style={{ color: 'hsl(var(--muted-foreground))' }} />
-                )}
-                {isCustom && (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-5 h-5 rounded-full flex items-center justify-center"
-                      style={{ background: 'hsl(var(--primary))' }}>
-                      <Check className="w-3 h-3" style={{ color: 'hsl(var(--primary-foreground))' }} />
-                    </div>
-                  </div>
-                )}
-              </div>
-              <span className="text-[10px] text-center leading-tight"
-                style={{ color: isCustom ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))' }}>
-                {uploading ? 'Uploading…' : 'Custom'}
-              </span>
-            </button>
           </div>
-          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
         </div>
 
         {/* Sliders toggle */}

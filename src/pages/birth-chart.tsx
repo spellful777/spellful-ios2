@@ -342,7 +342,16 @@ export default function BirthChartPage() {
     return `${name} Big Three: ☉ ${chart.sun.sign} · ☽ ${chart.moon.sign} · ↑ ${chart.ascendant.sign} — Cast your natal chart at Spellful ✨`;
   }
 
+  function trackBirthChartShare(platform: string) {
+    void fetch('/api/birth-chart/share', {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ platform }),
+    });
+  }
+
   function copyLink() {
+    trackBirthChartShare('copy');
     navigator.clipboard.writeText(shareUrl).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
@@ -350,23 +359,27 @@ export default function BirthChartPage() {
   }
 
   function shareToX() {
+    trackBirthChartShare('x');
     const text = encodeURIComponent(getShareTagline());
     const url = encodeURIComponent(shareUrl);
     window.open(`https://x.com/intent/tweet?text=${text}&url=${url}`, '_blank', 'noopener');
   }
 
   function shareToFacebook() {
+    trackBirthChartShare('facebook');
     const url = encodeURIComponent(shareUrl);
     window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}`, '_blank', 'noopener');
   }
 
   function shareToLinkedIn() {
+    trackBirthChartShare('linkedin');
     const url = encodeURIComponent(shareUrl);
     const title = encodeURIComponent(getShareTagline());
     window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${url}&title=${title}`, '_blank', 'noopener');
   }
 
   function shareToInstagram() {
+    trackBirthChartShare('instagram');
     // Instagram doesn't support direct URL sharing — copy to clipboard instead
     navigator.clipboard.writeText(`${getShareTagline()} ${shareUrl}`).then(() => {
       setCopied(true);

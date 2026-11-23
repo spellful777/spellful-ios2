@@ -36,6 +36,7 @@ interface DailyHoroscope {
 
 type MessageStatus = 'sent' | 'draft' | 'trashed' | 'deleted';
 type Folder = 'inbox' | 'requests' | 'drafts' | 'trash';
+type CovenStatus = 'accepted' | 'pending_sent' | 'pending_received' | 'declined' | null;
 
 interface OtherUser {
   id: string;
@@ -154,6 +155,10 @@ interface DesktopThreadProps {
   toggleReaction: (msgId: number, emoji: string) => Promise<void>;
   softDeleteMessage: (msgId: number) => Promise<void>;
   wallpaper: WallpaperPrefs;
+  isCoven: boolean;
+  covenStatus: CovenStatus;
+  covenConnectionId: number | null;
+  onCovenAction: (action: 'send' | 'accept' | 'decline') => Promise<void>;
   onOpenWallpaperPicker: () => void;
   onSaveWallpaper: (prefs: WallpaperPrefs) => void;
   activeConvId: number | null;
@@ -169,7 +174,8 @@ function DesktopThread({
   otherIsTyping, lastReadMsgId,
   replyTo, setReplyTo, editingMsg, setEditingMsg,
   reactionPickerMsgId, setReactionPickerMsgId, toggleReaction,
-  softDeleteMessage, wallpaper, onOpenWallpaperPicker, onSaveWallpaper, activeConvId,
+  softDeleteMessage, wallpaper, isCoven, covenStatus, covenConnectionId, onCovenAction,
+  onOpenWallpaperPicker, onSaveWallpaper, activeConvId,
   showSearch, onToggleSearch, onSearchJump,
 }: DesktopThreadProps) {
   const [showWallpaperInline, setShowWallpaperInline] = React.useState(false);
@@ -177,16 +183,22 @@ function DesktopThread({
     <>
       {/* Thread header */}
       <div className="flex items-center gap-3 p-4" style={{ borderBottom: '1px solid hsl(var(--border))' }}>
-        <div className="relative">
+        <a
+          href={activeOtherUser?.username ? `/profile/${activeOtherUser.username}` : undefined}
+          className="relative flex-shrink-0 cursor-pointer"
+          aria-label={activeOtherUser?.username ? `View ${activeOtherUser.name ?? activeOtherUser.username}'s profile` : undefined}>
           <Avatar user={activeOtherUser} size={36} />
           {activeOtherUser && (
             <div className="absolute -bottom-0.5 -right-0.5">
               <OnlineDot userId={activeOtherUser.id} size={9} />
             </div>
           )}
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="font-medium text-sm truncate" style={{ color: 'hsl(var(--foreground))' }}>
+        </a>
+        <a
+          href={activeOtherUser?.username ? `/profile/${activeOtherUser.username}` : undefined}
+          className="flex-1 min-w-0 cursor-pointer"
+          aria-label={activeOtherUser?.username ? `View ${activeOtherUser.name ?? activeOtherUser.username}'s profile` : undefined}>
+          <p className="font-medium text-sm truncate hover:underline" style={{ color: 'hsl(var(--foreground))' }}>
             {activeOtherUser?.name ?? activeOtherUser?.username ?? 'Unknown'}
           </p>
           <AnimatePresence mode="wait">
@@ -202,7 +214,7 @@ function DesktopThread({
               </motion.p>
             ) : null}
           </AnimatePresence>
-        </div>
+        </a>
         <div className="ml-auto flex items-center gap-1 text-xs flex-shrink-0" style={{ color: 'hsl(var(--muted-foreground))' }}>
           <button
             onClick={onToggleSearch}
@@ -214,16 +226,18 @@ function DesktopThread({
             aria-label="Search messages">
             <Search className="w-3.5 h-3.5" />
           </button>
-          <button
-            onClick={() => setShowWallpaperInline(v => !v)}
-            className="w-7 h-7 rounded-full flex items-center justify-center mr-1 transition-all"
-            style={{
-              background: showWallpaperInline ? 'hsl(var(--primary) / 0.15)' : 'hsl(var(--muted))',
-              color: showWallpaperInline ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))',
-            }}
-            aria-label="Chat appearance">
-            <Palette className="w-3.5 h-3.5" />
-          </button>
+          {isCoven && (
+            <button
+              onClick={() => setShowWallpaperInline(v => !v)}
+              className="w-7 h-7 rounded-full flex items-center justify-center mr-1 transition-all"
+              style={{
+                background: showWallpaperInline ? 'hsl(var(--primary) / 0.15)' : 'hsl(var(--muted))',
+                color: showWallpaperInline ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))',
+              }}
+              aria-label="Chat appearance">
+              <Palette className="w-3.5 h-3.5" />
+            </button>
+          )}
           <Lock className="w-3 h-3" style={{ color: 'hsl(var(--success))' }} />
           <span>{pageContent.encryptedShort}</span>
         </div>
@@ -560,16 +574,76 @@ function DesktopThread({
             )}
           </AnimatePresence>
         )}
+        {/* Coven accepted notification */}
+        {covenStatus === 'accepted' && messages.length === 0 && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="flex flex-col items-center gap-1 py-6 px-4 text-center">
+            <span className="text-2xl">✨</span>
+            <p className="text-sm font-medium" style={{ color: 'hsl(var(--primary))' }}>
+              You're now Coven friends with {activeOtherUser?.name ?? activeOtherUser?.username ?? 'them'}!
+            </p>
+            <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>Send your first message.</p>
+          </motion.div>
+        )}
         <div ref={bottomRef} />
       </div>
 
-      {/* Send bar */}
+      {/* Coven connection banner — shown when not yet accepted friends */}
+      {folder === 'inbox' && covenStatus !== 'accepted' && (
+        <div className="px-4 py-3 flex flex-col gap-2" style={{ borderTop: '1px solid hsl(var(--border))', background: 'hsl(var(--muted))' }}>
+          {covenStatus === null && (
+            <>
+              <p className="text-xs text-center" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                You're not Coven friends yet. Send a request to unlock full messaging.
+              </p>
+              <button
+                onClick={() => void onCovenAction('send')}
+                className="w-full py-2 rounded-full text-sm font-medium transition-opacity hover:opacity-80"
+                style={{ background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))' }}>
+                Send Coven Request
+              </button>
+            </>
+          )}
+          {covenStatus === 'pending_sent' && (
+            <p className="text-xs text-center py-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
+              ✨ Coven request sent — waiting for {activeOtherUser?.name ?? activeOtherUser?.username ?? 'them'} to accept.
+            </p>
+          )}
+          {covenStatus === 'pending_received' && (
+            <>
+              <p className="text-xs text-center" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                {activeOtherUser?.name ?? activeOtherUser?.username ?? 'They'} sent you a Coven request.
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => void onCovenAction('accept')}
+                  className="flex-1 py-2 rounded-full text-sm font-medium transition-opacity hover:opacity-80"
+                  style={{ background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))' }}>
+                  Accept
+                </button>
+                <button
+                  onClick={() => void onCovenAction('decline')}
+                  className="flex-1 py-2 rounded-full text-sm font-medium transition-opacity hover:opacity-80"
+                  style={{ background: 'hsl(var(--muted-foreground) / 0.2)', color: 'hsl(var(--foreground))' }}>
+                  Decline
+                </button>
+              </div>
+            </>
+          )}
+          {covenStatus === 'declined' && (
+            <p className="text-xs text-center py-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
+              Coven request was declined.
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Send bar — always shown in inbox regardless of Coven status */}
       {folder === 'inbox' && (
         <div className="p-4" style={{ borderTop: '1px solid hsl(var(--border))' }}>
-          {!otherUserPublicKey ? (
-            <p className="text-xs text-center" style={{ color: 'hsl(var(--muted-foreground))' }}>{pageContent.noKeyWarning}</p>
-          ) : (
-            <>
+          <>
               {/* Reply-to context bar */}
               <AnimatePresence>
                 {replyTo && (
@@ -619,7 +693,7 @@ function DesktopThread({
                   maxLength={2000}
                   autoComplete="off"
                 />
-                <Button type="submit" size="icon" disabled={!draft.trim() || sending}
+                <Button type="submit" size="icon" disabled={!draft.trim() || sending || !otherUserPublicKey}
                   className="rounded-full bg-primary text-primary-foreground flex-shrink-0">
                   {editingMsg ? <Check className="w-4 h-4" /> : <Send className="w-4 h-4" />}
                 </Button>
@@ -629,7 +703,6 @@ function DesktopThread({
                 <span className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>Private conversation</span>
               </div>
             </>
-          )}
         </div>
       )}
     </>
@@ -681,6 +754,9 @@ export default function MessagesPage() {
   // ── Phase 4: wallpaper / theme ────────────────────────────────────────────
   const defaultWallpaper: WallpaperPrefs = { themeId: 'default', customImageUrl: null, dimAmount: 40, blurAmount: 0 };
   const [wallpaper, setWallpaper] = useState<WallpaperPrefs>(defaultWallpaper);
+  const [isCoven, setIsCoven] = useState(false);
+  const [covenStatus, setCovenStatus] = useState<CovenStatus>(null);
+  const [covenConnectionId, setCovenConnectionId] = useState<number | null>(null);
   // showWallpaperPicker removed — wallpaper now inline
 
   // ── Phase 5: message search ───────────────────────────────────────────────
@@ -883,9 +959,10 @@ export default function MessagesPage() {
     // Reset Phase 5 state
     setShowSearch(false);
 
-    const [keyRes, wallpaperRes] = await Promise.all([
+    const [keyRes, wallpaperRes, covenRes] = await Promise.all([
       fetch(`/api/keys?userId=${other.id}`, { credentials: 'include' }),
       fetch(`/api/conversations/${convId}/wallpaper`, { credentials: 'include' }),
+      fetch(`/api/coven/status/${other.id}`, { credentials: 'include' }),
     ]);
     const theirKey = keyRes.ok ? ((await keyRes.json() as { publicKey?: string }).publicKey ?? null) : null;
     setOtherUserPublicKey(theirKey);
@@ -895,10 +972,51 @@ export default function MessagesPage() {
     } else {
       setWallpaper(defaultWallpaper);
     }
+    if (covenRes.ok) {
+      const cs = await covenRes.json() as { status: CovenStatus; connectionId: number | null };
+      setCovenStatus(cs.status);
+      setCovenConnectionId(cs.connectionId);
+      setIsCoven(cs.status === 'accepted');
+    } else {
+      setCovenStatus(null);
+      setCovenConnectionId(null);
+      setIsCoven(false);
+    }
 
     await loadFolder('inbox', convId, theirKey);
     setConversations(prev => prev.map(c => c.id === convId ? { ...c, unreadCount: 0 } : c));
     setTimeout(() => inputRef.current?.focus(), 300);
+  }
+
+  // ── Coven action handler ─────────────────────────────────────────────────
+  async function handleCovenAction(action: 'send' | 'accept' | 'decline') {
+    if (!activeOtherUser) return;
+    if (action === 'send') {
+      const res = await fetch('/api/coven/request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ receiverId: activeOtherUser.id }),
+      });
+      if (res.ok) {
+        setCovenStatus('pending_sent');
+      }
+    } else if ((action === 'accept' || action === 'decline') && covenConnectionId !== null) {
+      const res = await fetch('/api/coven/respond', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ connectionId: covenConnectionId, action }),
+      });
+      if (res.ok) {
+        if (action === 'accept') {
+          setCovenStatus('accepted');
+          setIsCoven(true);
+        } else {
+          setCovenStatus('declined');
+        }
+      }
+    }
   }
 
   // ── Phase 5: scroll to a message by id ───────────────────────────────────
@@ -1439,7 +1557,7 @@ export default function MessagesPage() {
               </div>
             ) : (
               filteredConversations.map((conv, idx) => (
-                <motion.button
+                  <motion.button
                   key={conv.id}
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -1447,14 +1565,18 @@ export default function MessagesPage() {
                   onClick={() => conv.otherUser && void openConversation(conv.id, conv.otherUser)}
                   className="w-full flex items-center gap-3.5 px-5 py-4 text-left active:opacity-60 transition-opacity"
                   style={{ borderBottom: '1px solid hsl(var(--border) / 0.5)' }}>
-                  <div className="relative flex-shrink-0">
+                  <a
+                    href={conv.otherUser?.username ? `/profile/${conv.otherUser.username}` : undefined}
+                    onClick={e => e.stopPropagation()}
+                    className="relative flex-shrink-0"
+                    aria-label={conv.otherUser?.username ? `View ${conv.otherUser.name ?? conv.otherUser.username}'s profile` : undefined}>
                     <Avatar user={conv.otherUser} size={52} />
                     {conv.otherUser && (
                       <div className="absolute bottom-0 right-0">
                         <OnlineDot userId={conv.otherUser.id} size={12} />
                       </div>
                     )}
-                  </div>
+                  </a>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-baseline justify-between gap-2">
                       <span className={'text-sm truncate ' + (conv.unreadCount > 0 ? 'font-semibold' : 'font-medium')}
@@ -1569,9 +1691,12 @@ export default function MessagesPage() {
                   <ArrowLeft className="w-5 h-5" style={{ color: 'hsl(var(--primary))' }} />
                   <span className="text-sm font-medium" style={{ color: 'hsl(var(--primary))' }}>Back</span>
                 </button>
-                <div className="flex-1 flex flex-col items-center gap-0.5">
+                <a
+                  href={activeOtherUser?.username ? `/profile/${activeOtherUser.username}` : undefined}
+                  className="flex-1 flex flex-col items-center gap-0.5 cursor-pointer"
+                  aria-label={activeOtherUser?.username ? `View ${activeOtherUser.name ?? activeOtherUser.username}'s profile` : undefined}>
                   <Avatar user={activeOtherUser} size={32} />
-                  <p className="text-sm font-semibold leading-tight" style={{ color: 'hsl(var(--foreground))' }}>
+                  <p className="text-sm font-semibold leading-tight hover:underline" style={{ color: 'hsl(var(--foreground))' }}>
                     {activeOtherUser?.name ?? activeOtherUser?.username ?? 'Unknown'}
                   </p>
                   <AnimatePresence mode="wait">
@@ -1587,7 +1712,7 @@ export default function MessagesPage() {
                       </motion.p>
                     ) : null}
                   </AnimatePresence>
-                </div>
+                </a>
                 <div className="flex items-center gap-1">
                   <button
                     onClick={() => setShowSearch(v => !v)}
@@ -1599,16 +1724,18 @@ export default function MessagesPage() {
                     aria-label="Search messages">
                     <Search className="w-4 h-4" />
                   </button>
-                  <button
-                    onClick={() => setShowWallpaperMobile(v => !v)}
-                    className="w-8 h-8 rounded-full flex items-center justify-center transition-all"
-                    style={{
-                      background: showWallpaperMobile ? 'hsl(var(--primary) / 0.15)' : 'hsl(var(--muted))',
-                      color: showWallpaperMobile ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))',
-                    }}
-                    aria-label="Chat appearance">
-                    <Palette className="w-4 h-4" />
-                  </button>
+                  {isCoven && (
+                    <button
+                      onClick={() => setShowWallpaperMobile(v => !v)}
+                      className="w-8 h-8 rounded-full flex items-center justify-center transition-all"
+                      style={{
+                        background: showWallpaperMobile ? 'hsl(var(--primary) / 0.15)' : 'hsl(var(--muted))',
+                        color: showWallpaperMobile ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))',
+                      }}
+                      aria-label="Chat appearance">
+                      <Palette className="w-4 h-4" />
+                    </button>
+                  )}
                   <Lock className="w-3.5 h-3.5 flex-shrink-0" style={{ color: 'hsl(var(--success))' }} />
                 </div>
               </div>
@@ -1641,7 +1768,7 @@ export default function MessagesPage() {
                       conversationId={activeConvId}
                       current={wallpaper}
                       onClose={() => setShowWallpaperMobile(false)}
-                      onSave={(prefs) => { setWallpaper(prefs); setShowWallpaperMobile(false); }}
+                      onSave={(prefs) => { setWallpaper(prefs); setShowWallpaperMobile(false); void fetch(`/api/conversations/${activeConvId}/wallpaper`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(prefs) }); }}
                     />
                   </motion.div>
                 )}
@@ -1958,19 +2085,78 @@ export default function MessagesPage() {
                     )}
                   </AnimatePresence>
                 )}
+                {/* Coven accepted notification */}
+                {covenStatus === 'accepted' && messages.length === 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="flex flex-col items-center gap-1 py-6 px-4 text-center">
+                    <span className="text-2xl">✨</span>
+                    <p className="text-sm font-medium" style={{ color: 'hsl(var(--primary))' }}>
+                      You're now Coven friends with {activeOtherUser?.name ?? activeOtherUser?.username ?? 'them'}!
+                    </p>
+                    <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>Send your first message.</p>
+                  </motion.div>
+                )}
                 <div ref={bottomRef} />
               </div>
 
-              {/* Sticky input bar */}
+              {/* Coven connection banner — shown when not yet accepted friends */}
+              {folder === 'inbox' && covenStatus !== 'accepted' && (
+                <div className="px-4 py-3 flex flex-col gap-2"
+                  style={{ borderTop: '1px solid hsl(var(--border))', background: 'hsl(var(--muted))' }}>
+                  {covenStatus === null && (
+                    <>
+                      <p className="text-xs text-center" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                        You're not Coven friends yet. Send a request to unlock full messaging.
+                      </p>
+                      <button
+                        onClick={() => void handleCovenAction('send')}
+                        className="w-full py-2 rounded-full text-sm font-medium transition-opacity hover:opacity-80"
+                        style={{ background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))' }}>
+                        Send Coven Request
+                      </button>
+                    </>
+                  )}
+                  {covenStatus === 'pending_sent' && (
+                    <p className="text-xs text-center py-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                      ✨ Coven request sent — waiting for {activeOtherUser?.name ?? activeOtherUser?.username ?? 'them'} to accept.
+                    </p>
+                  )}
+                  {covenStatus === 'pending_received' && (
+                    <>
+                      <p className="text-xs text-center" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                        {activeOtherUser?.name ?? activeOtherUser?.username ?? 'They'} sent you a Coven request.
+                      </p>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => void handleCovenAction('accept')}
+                          className="flex-1 py-2 rounded-full text-sm font-medium transition-opacity hover:opacity-80"
+                          style={{ background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))' }}>
+                          Accept
+                        </button>
+                        <button
+                          onClick={() => void handleCovenAction('decline')}
+                          className="flex-1 py-2 rounded-full text-sm font-medium transition-opacity hover:opacity-80"
+                          style={{ background: 'hsl(var(--muted-foreground) / 0.2)', color: 'hsl(var(--foreground))' }}>
+                          Decline
+                        </button>
+                      </div>
+                    </>
+                  )}
+                  {covenStatus === 'declined' && (
+                    <p className="text-xs text-center py-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                      Coven request was declined.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Sticky input bar — always shown in inbox regardless of Coven status */}
               {folder === 'inbox' && (
                 <div className="px-4 py-3"
                   style={{ borderTop: '1px solid hsl(var(--border))', background: 'hsl(var(--card))' }}>
-                  {!otherUserPublicKey ? (
-                    <p className="text-xs text-center py-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                      {pageContent.noKeyWarning}
-                    </p>
-                  ) : (
-                    <>
+                  <>
                       {/* Reply/edit context bar */}
                       <AnimatePresence>
                         {replyTo && (
@@ -2026,7 +2212,7 @@ export default function MessagesPage() {
                         />
                         <motion.button
                           type="submit"
-                          disabled={!draft.trim() || sending}
+                          disabled={!draft.trim() || sending || !otherUserPublicKey}
                           whileTap={{ scale: 0.88 }}
                           className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 disabled:opacity-40 transition-opacity"
                           style={{ background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))' }}>
@@ -2034,7 +2220,6 @@ export default function MessagesPage() {
                         </motion.button>
                       </form>
                     </>
-                  )}
                 </div>
               )}
             </motion.div>
@@ -2295,14 +2480,18 @@ export default function MessagesPage() {
                       background: activeConvId === conv.id ? 'hsl(var(--muted))' : 'transparent',
                       borderBottom: '1px solid hsl(var(--border))',
                     }}>
-                    <div className="relative flex-shrink-0">
+                    <a
+                      href={conv.otherUser?.username ? `/profile/${conv.otherUser.username}` : undefined}
+                      onClick={e => e.stopPropagation()}
+                      className="relative flex-shrink-0"
+                      aria-label={conv.otherUser?.username ? `View ${conv.otherUser.name ?? conv.otherUser.username}'s profile` : undefined}>
                       <Avatar user={conv.otherUser} size={40} />
                       {conv.otherUser && (
                         <div className="absolute -bottom-0.5 -right-0.5">
                           <OnlineDot userId={conv.otherUser.id} size={10} />
                         </div>
                       )}
-                    </div>
+                    </a>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
                         <span className={`text-sm truncate ${conv.unreadCount > 0 ? 'font-semibold' : ''}`}
@@ -2395,8 +2584,12 @@ export default function MessagesPage() {
                 toggleReaction={toggleReaction}
                 softDeleteMessage={softDeleteMessage}
                 wallpaper={wallpaper}
+                isCoven={isCoven}
+                covenStatus={covenStatus}
+                covenConnectionId={covenConnectionId}
+                onCovenAction={handleCovenAction}
                 onOpenWallpaperPicker={() => { /* inline only */ }}
-                onSaveWallpaper={(prefs) => setWallpaper(prefs)}
+                onSaveWallpaper={(prefs) => { setWallpaper(prefs); void fetch(`/api/conversations/${activeConvId}/wallpaper`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(prefs) }); }}
                 activeConvId={activeConvId}
                 showSearch={showSearch}
                 onToggleSearch={() => setShowSearch(v => !v)}

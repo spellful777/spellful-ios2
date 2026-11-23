@@ -2925,5 +2925,33 @@
     },
     "uploadContentHash": "64ab69784f25d6f6a4c320524f38e81319ff13cd36c7e58a83a16a31de23263f",
     "caption": "purple galaxy nebula cosmic space scene"
+  },
+  "pages/profile/share-card-bg-story": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/pages-profile-share-card-bg-story-760ec5c2.png",
+    "searchQuery": "neon spellful cosmic galaxy interface design",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-11-23T00:34:29.659Z",
+    "lastUpdated": "2026-11-23T00:34:29.659Z",
+    "uploadSources": {
+      "/airo-assets/uploads/pages-profile-share-card-bg-story-760ec5c2.png": "9udxg5wm87_1795394014524_file_gITghByU5H.png"
+    },
+    "uploadContentHash": "904365d87125418cede98509eebf375fa7f62ebd856ea6ed4a03570055b9cce7",
+    "caption": "neon spellful cosmic galaxy interface design"
+  },
+  "pages/profile/share-card-bg-square": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/pages-profile-share-card-bg-square-92318006.png",
+    "searchQuery": "neon spellful cosmic galaxy background template",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-11-23T00:34:31.463Z",
+    "lastUpdated": "2026-11-23T00:34:31.463Z",
+    "uploadSources": {
+      "/airo-assets/uploads/pages-profile-share-card-bg-square-92318006.png": "9udxg5wm87_1795394014530_file_OLVVljGG3-.png"
+    },
+    "uploadContentHash": "e5c94cb5e076acf512b4e70370dbf32d825991d34f1a8fba79dab57a4477025f",
+    "caption": "neon spellful cosmic galaxy background template"
   }
 }

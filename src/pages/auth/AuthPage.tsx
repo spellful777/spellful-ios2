@@ -156,13 +156,18 @@ export default function AuthPage({ mode, providers }: AuthPageProps) {
       const result = isLogin
         ? await authClient.signIn.email({ email, password })
         : await authClient.signUp.email({ email, password, name: name || '' });
+      // result is undefined when BetterAuth performs a redirect (normal success path)
+      if (!result) {
+        navigate(from, { replace: true });
+        return;
+      }
       if (result.error) {
-        setError(result.error.message || 'Authentication failed');
+        setError(result.error.message || 'Invalid email or password.');
         return;
       }
       navigate(from, { replace: true });
     } catch {
-      setError('An error occurred.');
+      setError('Something went wrong. Please try again.');
     } finally {
       setLoading(false);
     }

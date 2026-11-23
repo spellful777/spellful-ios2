@@ -62,6 +62,7 @@ export async function runStartupMigration(): Promise<void> {
       { col: 'invite_permission',          sql: "ALTER TABLE user ADD COLUMN invite_permission VARCHAR(20) NOT NULL DEFAULT 'everyone'" },
       { col: 'notification_preferences',   sql: 'ALTER TABLE user ADD COLUMN notification_preferences JSON NULL DEFAULT NULL' },
       // Profile 3.0
+      { col: 'avatar_preset',               sql: "ALTER TABLE user ADD COLUMN avatar_preset VARCHAR(60) NOT NULL DEFAULT ''" },
       { col: 'username_normalized',        sql: 'ALTER TABLE user ADD COLUMN username_normalized VARCHAR(50) NULL' },
       { col: 'username_changed_at',        sql: 'ALTER TABLE user ADD COLUMN username_changed_at TIMESTAMP NULL DEFAULT NULL' },
       { col: 'profile_theme',              sql: "ALTER TABLE user ADD COLUMN profile_theme VARCHAR(50) NOT NULL DEFAULT ''" },
@@ -247,7 +248,6 @@ export async function runStartupMigration(): Promise<void> {
       await conn.execute(`
         CREATE TABLE IF NOT EXISTS messenger_wallpapers (
           id INT NOT NULL AUTO_INCREMENT,
-          user_id VARCHAR(36) NOT NULL,
           conversation_id INT NOT NULL,
           theme_id VARCHAR(50) NOT NULL DEFAULT 'default',
           custom_image_url TEXT,
@@ -256,14 +256,29 @@ export async function runStartupMigration(): Promise<void> {
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
           PRIMARY KEY (id),
-          UNIQUE KEY uq_wallpaper (user_id, conversation_id),
-          FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE,
+          UNIQUE KEY uq_wallpaper_conv (conversation_id),
           FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
         )`);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       console.error(JSON.stringify({ event: 'startup.migration.messenger_wallpapers.error', msg: msg.slice(0, 120) }));
     }
+    // ── messenger_wallpapers: migrate to shared (conversation-keyed) wallpaper ─
+    try {
+      // Drop old per-user unique key if it exists (idempotent)
+      await conn.execute(`ALTER TABLE messenger_wallpapers DROP INDEX uq_wallpaper`);
+    } catch { /* index may not exist — safe to ignore */ }
+    try {
+      // Drop user_id FK and column if they exist (idempotent)
+      await conn.execute(`ALTER TABLE messenger_wallpapers DROP FOREIGN KEY messenger_wallpapers_ibfk_1`);
+    } catch { /* may not exist */ }
+    try {
+      await conn.execute(`ALTER TABLE messenger_wallpapers DROP COLUMN user_id`);
+    } catch { /* may not exist */ }
+    try {
+      // Add shared unique key on conversation_id if not already present
+      await conn.execute(`ALTER TABLE messenger_wallpapers ADD UNIQUE KEY uq_wallpaper_conv (conversation_id)`);
+    } catch { /* already exists — safe to ignore */ }
 
     // ── quotes table ──────────────────────────────────────────────────────────
     try {
@@ -755,12 +770,12 @@ export async function runStartupMigration(): Promise<void> {
           work_description TEXT NOT NULL,
           work_samples TEXT NOT NULL,
           reason_for_applying TEXT NOT NULL,
-          additional_notes TEXT DEFAULT '',
+          additional_notes TEXT NULL,
           agreed_to_guidelines TINYINT NOT NULL DEFAULT 0,
           reviewed_by VARCHAR(36) NULL,
           reviewed_at TIMESTAMP NULL,
           review_decision VARCHAR(30) DEFAULT '',
-          review_reason TEXT DEFAULT '',
+          review_reason TEXT NULL,
           notification_sent TINYINT DEFAULT 0,
           notification_sent_at TIMESTAMP NULL,
           notification_retries INT DEFAULT 0,
@@ -797,7 +812,7 @@ export async function runStartupMigration(): Promise<void> {
           application_id INT NOT NULL,
           actor_id VARCHAR(36) NULL,
           event_type VARCHAR(50) NOT NULL,
-          note TEXT DEFAULT '',
+          note TEXT NULL,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           INDEX idx_cae_app (application_id),
           FOREIGN KEY (application_id) REFERENCES creator_applications(id) ON DELETE CASCADE,
@@ -1117,6 +1132,58 @@ export async function runStartupMigration(): Promise<void> {
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       console.error(JSON.stringify({ event: 'startup.migration.practice_routines.error', msg: msg.slice(0, 120) }));
+    }
+
+    // ── community_posts: share_count column ─────────────────────────────────
+    try {
+      await conn.execute(
+        `ALTER TABLE community_posts ADD COLUMN share_count INT NOT NULL DEFAULT 0`
+      );
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (!msg.includes('Duplicate column')) {
+        console.error(JSON.stringify({ event: 'startup.migration.community_posts_share_count.error', msg: msg.slice(0, 120) }));
+      }
+    }
+
+    // ── user: signup_source column ────────────────────────────────────────────
+    try {
+      await conn.execute(
+        `ALTER TABLE user ADD COLUMN signup_source VARCHAR(60) NOT NULL DEFAULT ''`
+      );
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (!msg.includes('Duplicate column')) {
+        console.error(JSON.stringify({ event: 'startup.migration.user_signup_source.error', msg: msg.slice(0, 120) }));
+      }
+    }
+
+    // ── bug_reports table ──────────────────────────────────────────────────────
+    try {
+      await conn.execute(`
+        CREATE TABLE IF NOT EXISTS bug_reports (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          reporter_id VARCHAR(36) NULL,
+          title VARCHAR(255) NOT NULL,
+          description TEXT NOT NULL,
+          page_url VARCHAR(500) DEFAULT '',
+          status VARCHAR(20) NOT NULL DEFAULT 'new',
+          assigned_to VARCHAR(36) NULL,
+          resolved_at TIMESTAMP NULL,
+          resolved_by VARCHAR(36) NULL,
+          admin_note TEXT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          INDEX idx_br_reporter (reporter_id),
+          INDEX idx_br_status (status),
+          INDEX idx_br_created (created_at),
+          FOREIGN KEY (reporter_id) REFERENCES user(id) ON DELETE SET NULL,
+          FOREIGN KEY (assigned_to) REFERENCES user(id) ON DELETE SET NULL,
+          FOREIGN KEY (resolved_by) REFERENCES user(id) ON DELETE SET NULL
+        )`);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error(JSON.stringify({ event: 'startup.migration.bug_reports.error', msg: msg.slice(0, 120) }));
     }
 
   } catch (e) {

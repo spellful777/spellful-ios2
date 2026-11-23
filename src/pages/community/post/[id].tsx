@@ -582,6 +582,13 @@ export default function PostThreadPage() {
     navigator.clipboard.writeText(window.location.href).catch(() => {});
     setShowShareToast(true);
     setTimeout(() => setShowShareToast(false), 2000);
+    // Track share count (fire-and-forget — non-critical)
+    if (post?.id) {
+      void fetch(`/api/community/posts/${post.id}/share`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+    }
   };
 
   // ── Build threaded reply tree ─────────────────────────────────────────────

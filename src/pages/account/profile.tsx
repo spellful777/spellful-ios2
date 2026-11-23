@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { motion, AnimatePresence } from 'motion/react';
+import ProfileShareCard from '@/components/ProfileShareCard';
 import { useSession } from '@/lib/auth/auth-client';
 import { useEntitlement } from '@/lib/use-plus-entitlement';
 import { Button } from '@/components/ui/button';
@@ -21,12 +22,35 @@ import { InstallSection } from '@/components/InstallSpellful';
 const ACCENTS = [
   { key: 'gold',     label: 'Gold',     color: 'hsl(var(--primary))' },
   { key: 'lavender', label: 'Lavender', color: 'hsl(var(--accent))' },
-  { key: 'rose',     label: 'Rose',     color: 'hsl(var(--footer-lavender))' },
+  { key: 'rose',     label: 'Rose',     color: 'hsl(var(--accent-rose))' },
   { key: 'sage',     label: 'Sage',     color: 'hsl(var(--secondary))' },
   { key: 'sky',      label: 'Sky',      color: 'hsl(var(--info))' },
   { key: 'ember',    label: 'Ember',    color: 'hsl(var(--warning))' },
-  { key: 'violet',   label: 'Violet',   color: 'hsl(var(--footer-lavender))' },
+  { key: 'violet',   label: 'Violet',   color: 'hsl(var(--accent-violet))' },
   { key: 'moon',     label: 'Moon',     color: 'hsl(var(--muted-foreground))' },
+];
+
+// ─── Theme overrides (mirrors /u/[username].tsx) ─────────────────────────────
+const THEME_OVERRIDES: Record<string, React.CSSProperties> = {
+  celestial: { '--profile-accent': 'hsl(var(--accent))',            '--profile-bg': 'hsl(259 39% 10%)' } as React.CSSProperties,
+  forest:    { '--profile-accent': 'hsl(var(--secondary))',         '--profile-bg': 'hsl(120 20% 8%)' } as React.CSSProperties,
+  lunar:     { '--profile-accent': 'hsl(var(--muted-foreground))',  '--profile-bg': 'hsl(248 30% 8%)' } as React.CSSProperties,
+  gothic:    { '--profile-accent': 'hsl(0 0% 80%)',                 '--profile-bg': 'hsl(0 0% 5%)' } as React.CSSProperties,
+  cottage:   { '--profile-accent': 'hsl(var(--secondary))',         '--profile-bg': 'hsl(80 15% 8%)' } as React.CSSProperties,
+  crystal:   { '--profile-accent': 'hsl(var(--primary))',           '--profile-bg': 'hsl(270 30% 9%)' } as React.CSSProperties,
+};
+
+// ─── Default avatar presets ──────────────────────────────────────────────────
+const DEFAULT_AVATARS = [
+  { key: 'default-hat-black',   label: 'Midnight',  src: '/airo-assets/images/avatars/default-hat-black' },
+  { key: 'default-hat-blue',    label: 'Sapphire',  src: '/airo-assets/images/avatars/default-hat-blue' },
+  { key: 'default-hat-green',   label: 'Emerald',   src: '/airo-assets/images/avatars/default-hat-green' },
+  { key: 'default-hat-orange',  label: 'Amber',     src: '/airo-assets/images/avatars/default-hat-orange' },
+  { key: 'default-hat-purple',  label: 'Amethyst',  src: '/airo-assets/images/avatars/default-hat-purple' },
+  { key: 'default-hat-red',     label: 'Crimson',   src: '/airo-assets/images/avatars/default-hat-red' },
+  { key: 'default-hat-rainbow', label: 'Rainbow',   src: '/airo-assets/images/avatars/default-hat-rainbow' },
+  { key: 'default-hat-trans',   label: 'Trans',     src: '/airo-assets/images/avatars/default-hat-trans' },
+  { key: 'default-hat-lesbian', label: 'Lesbian',   src: '/airo-assets/images/avatars/default-hat-lesbian' },
 ];
 
 // ─── Cover presets ────────────────────────────────────────────────────────────
@@ -86,7 +110,7 @@ type SectionConfig = { id: string; enabled: boolean; order: number };
 type FormState = {
   name: string; bio: string; location: string; pronouns: string;
   witchPath: string; sunSign: string; moonSign: string; risingSign: string;
-  profileVisibility: string; accentColor: string; coverPreset: string;
+  profileVisibility: string; accentColor: string; avatarPreset: string; coverPreset: string;
   coverImage: string | null;
   interestTags: string[];
   socialLinks: { instagram: string; tiktok: string; youtube: string; website: string };
@@ -161,7 +185,7 @@ const DEFAULT_FORM_REAL: FormState = {
   accentColor: 'gold', coverPreset: 'midnight', coverImage: null,
   interestTags: [],
   socialLinks: { instagram: '', tiktok: '', youtube: '', website: '' },
-  profileTheme: '', avatarFrame: '', practiceLabels: [], profileStatus: '',
+  avatarPreset: '', profileTheme: '', avatarFrame: '', practiceLabels: [], profileStatus: '',
   profileSections: DEFAULT_SECTIONS.map((s, i) => ({ id: s.id, enabled: true, order: i })),
   profileLayout: 'classic',
   bioVisibility: 'public',
@@ -298,6 +322,8 @@ export default function ProfileStudioPage() {
   const [newMilestoneVis, setNewMilestoneVis] = useState('private');
   const [addingMilestone, setAddingMilestone] = useState(false);
 
+  const [previewStats, setPreviewStats] = useState({ covenCount: 0, followerCount: 0 });
+
   const coverRef = useRef<HTMLInputElement>(null);
   const avatarRef = useRef<HTMLInputElement>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
@@ -386,7 +412,10 @@ export default function ProfileStudioPage() {
     if (!(session?.user as SessionUser | undefined)?.username) return;
     fetch(`/api/profile/${(session!.user as SessionUser).username}`, { credentials: 'include' })
       .then(r => r.json())
-      .then((data: { profile?: Record<string, unknown> }) => {
+      .then((data: { profile?: Record<string, unknown>; covenCount?: number; followerCount?: number }) => {
+        if (data.covenCount !== undefined || data.followerCount !== undefined) {
+          setPreviewStats({ covenCount: data.covenCount ?? 0, followerCount: data.followerCount ?? 0 });
+        }
         if (data.profile) {
           const p = data.profile;
           const rawSections = Array.isArray(p.profileSections) ? (p.profileSections as SectionConfig[]) : [];
@@ -414,6 +443,7 @@ export default function ProfileStudioPage() {
               youtube: String((p.socialLinks as Record<string, string>)?.youtube ?? ''),
               website: String((p.socialLinks as Record<string, string>)?.website ?? ''),
             },
+            avatarPreset: String(p.avatarPreset ?? ''),
             profileTheme: String(p.profileTheme ?? ''),
             avatarFrame: String(p.avatarFrame ?? ''),
             practiceLabels: Array.isArray(p.practiceLabels) ? (p.practiceLabels as string[]) : [],
@@ -643,12 +673,18 @@ export default function ProfileStudioPage() {
   }
 
   async function uploadAvatar(file: File) {
-    const fd = new FormData();
-    fd.append('avatar', file);
-    const r = await fetch('/api/account/avatar', { method: 'POST', body: fd, credentials: 'include' });
-    if (r.ok) {
-      const data = await r.json() as { url?: string };
-      if (data.url) setAvatarPreview(data.url);
+    try {
+      const fd = new FormData();
+      fd.append('avatar', file);
+      const r = await fetch('/api/account/avatar', { method: 'POST', body: fd, credentials: 'include' });
+      const data = await r.json() as { url?: string; error?: string; code?: string };
+      if (r.ok && data.url) {
+        setAvatarPreview(data.url);
+      } else {
+        setError(data.error ?? 'Avatar upload failed');
+      }
+    } catch {
+      setError('Avatar upload failed');
     }
   }
 
@@ -664,7 +700,7 @@ export default function ProfileStudioPage() {
           name: form.name, bio: form.bio, location: form.location, pronouns: form.pronouns,
           witchPath: form.witchPath, sunSign: form.sunSign, moonSign: form.moonSign, risingSign: form.risingSign,
           profileVisibility: form.profileVisibility, profileLayout: form.profileLayout,
-          accentColor: form.accentColor, coverPreset: form.coverPreset, coverImage: form.coverImage,
+          accentColor: form.accentColor, avatarPreset: form.avatarPreset, coverPreset: form.coverPreset, coverImage: form.coverImage,
           interestTags: form.interestTags, socialLinks: form.socialLinks,
           profileTheme: form.profileTheme, avatarFrame: form.avatarFrame,
           practiceLabels: form.practiceLabels, profileStatus: form.profileStatus,
@@ -691,7 +727,18 @@ export default function ProfileStudioPage() {
     : { background: COVER_PRESETS.find(p => p.key === form.coverPreset)?.style ?? COVER_PRESETS[0].style };
   const displayName = form.name || session?.user?.name || 'Your Name';
   const initials = displayName.slice(0, 2).toUpperCase();
-  const avatarSrc = avatarPreview ?? session?.user?.image ?? null;
+  const presetSrc = form.avatarPreset ? DEFAULT_AVATARS.find(a => a.key === form.avatarPreset)?.src ?? null : null;
+  // Preset selection is an explicit studio action — show it immediately in the preview
+  // even when the user already has a session profile photo.
+  const avatarSrc = avatarPreview ?? presetSrc ?? session?.user?.image ?? null;
+
+  // Visibility helper — respects the preview mode toggle
+  function canSee(fieldVisibility: string): boolean {
+    if (previewMode === 'me') return true;
+    if (previewMode === 'coven') return fieldVisibility === 'public' || fieldVisibility === 'coven';
+    // public
+    return fieldVisibility === 'public';
+  }
 
   // ── Completion score (5 signals) ───────────────────────────────────────────
   const completionScore = [
@@ -765,26 +812,44 @@ export default function ProfileStudioPage() {
           {/* ── Live preview card ── */}
           <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid hsl(var(--border))' }}>
             {/* Cover */}
-            <div className="h-20 relative" style={coverBg}>
-              {/* Avatar overlapping cover */}
+            <div
+              className="relative"
+              style={{
+                ...coverBg,
+                height: form.profileLayout === 'immersive' ? '72px' : form.profileLayout === 'compact' ? '40px' : '56px',
+              }}
+            >
+              {/* Avatar overlapping cover — outer ring shows frame, inner circle clips image */}
               <div
-                className="absolute -bottom-7 left-4 w-14 h-14 rounded-full overflow-hidden flex items-center justify-center"
+                className="absolute -bottom-7 left-4 w-14 h-14 rounded-full flex items-center justify-center"
                 style={{
-                  background: 'hsl(var(--muted))',
-                  boxShadow: `0 0 0 3px hsl(var(--card)), 0 0 0 5px ${accent}40`,
+                  // Frame ring: accent-colored for any named frame, plain card gap for none
+                  background: form.avatarFrame
+                    ? `conic-gradient(${accent} 0deg, ${accent}55 180deg, ${accent} 360deg)`
+                    : 'hsl(var(--card))',
+                  padding: form.avatarFrame ? '3px' : '2px',
+                  boxShadow: form.avatarFrame
+                    ? `0 0 0 2px hsl(var(--card)), 0 0 8px 2px ${accent}50`
+                    : `0 0 0 2px hsl(var(--card))`,
                 }}
               >
-                {avatarSrc
-                  ? <img src={avatarSrc} alt={displayName} className="w-full h-full object-cover" />
-                  : <span className="text-lg font-serif" style={{ color: accent }}>{initials}</span>
-                }
+                <div
+                  className="w-full h-full rounded-full overflow-hidden flex items-center justify-center"
+                  style={{ background: 'hsl(var(--muted))' }}
+                >
+                  {avatarSrc
+                    ? <img src={avatarSrc} alt={displayName} className="w-full h-full object-cover" />
+                    : <span className="text-lg font-serif" style={{ color: accent }}>{initials}</span>
+                  }
+                </div>
               </div>
             </div>
             {/* Profile info */}
-            <div className="pt-9 pb-3 px-4" style={{ background: 'hsl(var(--card))' }}>
+            <div className="pt-9 pb-3 px-4" style={{ background: (THEME_OVERRIDES[form.profileTheme] as Record<string, string> | undefined)?.['--profile-bg'] ?? 'hsl(var(--card))' }}>
               <div className="flex items-start justify-between gap-2">
                 <div>
                   <p className="font-serif font-semibold text-sm" style={{ color: 'hsl(var(--foreground))' }}>{displayName}</p>
+                  {session?.user?.username && <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>@{session.user.username}</p>}
                   {form.pronouns && <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>{form.pronouns}</p>}
                   {form.profileStatus && <p className="text-xs mt-0.5 italic" style={{ color: accent }}>{form.profileStatus}</p>}
                 </div>
@@ -794,13 +859,97 @@ export default function ProfileStudioPage() {
                   ))}
                 </div>
               </div>
-              {form.bio && <p className="text-xs mt-2 line-clamp-2" style={{ color: 'hsl(var(--muted-foreground))' }}>{form.bio}</p>}
+              {/* Witch path + location — About tab, gated by locationVisibility */}
+              {(form.witchPath || (form.location && canSee(form.locationVisibility))) && (
+                <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1">
+                  {form.witchPath && (
+                    <span className="text-xs" style={{ color: accent }}>✦ {form.witchPath} Witch</span>
+                  )}
+                  {form.location && canSee(form.locationVisibility) && (
+                    <span className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>📍 {form.location}</span>
+                  )}
+                </div>
+              )}
+              {/* Bio — gated by bioVisibility */}
+              {form.bio && canSee(form.bioVisibility) && (
+                <p className="text-xs mt-2 line-clamp-2" style={{ color: 'hsl(var(--muted-foreground))' }}>{form.bio}</p>
+              )}
+              {/* Coven & follower counts */}
+              <div className="flex items-center gap-4 mt-2 mb-1">
+                <div className="text-center">
+                  <p className="text-sm font-serif font-bold leading-none" style={{ color: 'hsl(var(--foreground))' }}>{previewStats.covenCount}</p>
+                  <p className="text-xs mt-0.5" style={{ color: 'hsl(var(--muted-foreground))' }}>Coven</p>
+                </div>
+                <div className="w-px h-6" style={{ background: 'hsl(var(--border))' }} />
+                <div className="text-center">
+                  <p className="text-sm font-serif font-bold leading-none" style={{ color: 'hsl(var(--foreground))' }}>{previewStats.followerCount}</p>
+                  <p className="text-xs mt-0.5" style={{ color: 'hsl(var(--muted-foreground))' }}>Followers</p>
+                </div>
+              </div>
+
+              {/* Astrology signs — Magic tab, gated by zodiacVisibility */}
+              {(form.sunSign || form.moonSign || form.risingSign) && canSee(form.zodiacVisibility) && (
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {form.sunSign && (
+                    <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'hsl(var(--muted))', color: 'hsl(var(--muted-foreground))' }}>☀ {form.sunSign}</span>
+                  )}
+                  {form.moonSign && (
+                    <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'hsl(var(--muted))', color: 'hsl(var(--muted-foreground))' }}>☽ {form.moonSign}</span>
+                  )}
+                  {form.risingSign && (
+                    <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'hsl(var(--muted))', color: 'hsl(var(--muted-foreground))' }}>↑ {form.risingSign}</span>
+                  )}
+                </div>
+              )}
               {form.interestTags.length > 0 && (
                 <div className="flex flex-wrap gap-1 mt-2">
                   {form.interestTags.slice(0, 4).map(t => (
                     <span key={t} className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'hsl(var(--muted))', color: 'hsl(var(--muted-foreground))' }}>{t}</span>
                   ))}
                   {form.interestTags.length > 4 && <span className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>+{form.interestTags.length - 4}</span>}
+                </div>
+              )}
+              {/* Social links — About tab, gated by socialLinksVisibility */}
+              {canSee(form.socialLinksVisibility) && (['instagram', 'tiktok', 'youtube', 'website'] as const).some(k => !!form.socialLinks[k]) && (
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {form.socialLinks.instagram && <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'hsl(var(--muted))', color: 'hsl(var(--muted-foreground))', border: '1px solid hsl(var(--border))' }}>📸 Instagram</span>}
+                  {form.socialLinks.tiktok    && <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'hsl(var(--muted))', color: 'hsl(var(--muted-foreground))', border: '1px solid hsl(var(--border))' }}>🎵 TikTok</span>}
+                  {form.socialLinks.youtube   && <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'hsl(var(--muted))', color: 'hsl(var(--muted-foreground))', border: '1px solid hsl(var(--border))' }}>▶ YouTube</span>}
+                  {form.socialLinks.website   && <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'hsl(var(--muted))', color: 'hsl(var(--muted-foreground))', border: '1px solid hsl(var(--border))' }}>🌐 Website</span>}
+                </div>
+              )}
+              {/* Magical Identity fields — Magic tab, each gated by its own visibility */}
+              {(['magical_name', 'magical_path', 'personal_motto', 'experience_level', 'favorite_element'] as const).some(k => !!identityForm[k] && canSee(identityVis[k])) && (
+                <div className="mt-2 pt-2 flex flex-wrap gap-1.5" style={{ borderTop: '1px solid hsl(var(--border))' }}>
+                  {identityForm.magical_name && canSee(identityVis.magical_name) && (
+                    <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: `${accent}18`, color: accent, border: `1px solid ${accent}40` }}>✦ {identityForm.magical_name}</span>
+                  )}
+                  {identityForm.magical_path && canSee(identityVis.magical_path) && (
+                    <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'hsl(var(--muted))', color: 'hsl(var(--muted-foreground))' }}>🌿 {identityForm.magical_path}</span>
+                  )}
+                  {identityForm.experience_level && canSee(identityVis.experience_level) && (
+                    <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'hsl(var(--muted))', color: 'hsl(var(--muted-foreground))' }}>⭐ {identityForm.experience_level}</span>
+                  )}
+                  {identityForm.favorite_element && canSee(identityVis.favorite_element) && (
+                    <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'hsl(var(--muted))', color: 'hsl(var(--muted-foreground))' }}>🔥 {identityForm.favorite_element}</span>
+                  )}
+                  {identityForm.personal_motto && canSee(identityVis.personal_motto) && (
+                    <span className="text-xs px-2 py-0.5 rounded-full italic" style={{ background: 'hsl(var(--muted))', color: 'hsl(var(--muted-foreground))' }}>"{identityForm.personal_motto}"</span>
+                  )}
+                </div>
+              )}
+              {/* Section visibility & order — More tab; always shown so ordering is visible */}
+              {form.profileSections.length > 0 && (
+                <div className="mt-2 pt-2" style={{ borderTop: '1px solid hsl(var(--border))' }}>
+                  <p className="text-xs mb-1" style={{ color: 'hsl(var(--muted-foreground))' }}>Sections</p>
+                  <div className="flex flex-wrap gap-1">
+                    {[...form.profileSections].sort((a, b) => a.order - b.order).map(s => {
+                      const label = DEFAULT_SECTIONS.find(d => d.id === s.id)?.label ?? s.id;
+                      return s.enabled
+                        ? <span key={s.id} className="text-xs px-1.5 py-0.5 rounded" style={{ background: `${accent}15`, color: accent }}>{label}</span>
+                        : <span key={s.id} className="text-xs px-1.5 py-0.5 rounded line-through" style={{ background: 'hsl(var(--muted))', color: 'hsl(var(--muted-foreground) / 0.4)' }}>{label}</span>;
+                    })}
+                  </div>
                 </div>
               )}
             </div>
@@ -871,28 +1020,75 @@ export default function ProfileStudioPage() {
                 <>
                   {/* Avatar */}
                   <Collapsible title="Avatar" defaultOpen>
-                    <div className="flex items-center gap-4">
-                      <div className="relative flex-shrink-0">
-                        <div className="w-16 h-16 rounded-full overflow-hidden flex items-center justify-center" style={{ background: 'hsl(var(--muted))', boxShadow: `0 0 0 2px ${accent}` }}>
-                          {avatarSrc
-                            ? <img src={avatarSrc} alt={displayName} className="w-full h-full object-cover" />
-                            : <span className="text-xl font-serif" style={{ color: accent }}>{initials}</span>
-                          }
+                    <div className="space-y-3">
+                      {/* Current avatar preview + upload button */}
+                      <div className="flex items-center gap-4">
+                        <div className="relative flex-shrink-0">
+                          <div className="w-16 h-16 rounded-full overflow-hidden flex items-center justify-center" style={{ background: 'hsl(var(--muted))', boxShadow: `0 0 0 2px ${accent}` }}>
+                            {avatarSrc
+                              ? <img src={avatarSrc} alt={displayName} className="w-full h-full object-cover" />
+                              : <span className="text-xl font-serif" style={{ color: accent }}>{initials}</span>
+                            }
+                          </div>
+                          {ent.data.isPlus && (
+                            <>
+                              <button
+                                onClick={() => avatarRef.current?.click()}
+                                className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center"
+                                style={{ background: accent, color: 'hsl(var(--primary-foreground))' }}
+                                aria-label="Upload custom photo"
+                              >
+                                <Camera className="w-3 h-3" />
+                              </button>
+                              <input ref={avatarRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden"
+                                onChange={e => { const f = e.target.files?.[0]; if (f) void uploadAvatar(f); }} />
+                            </>
+                          )}
                         </div>
-                        <button
-                          onClick={() => avatarRef.current?.click()}
-                          className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center"
-                          style={{ background: accent, color: 'hsl(var(--primary-foreground))' }}
-                          aria-label="Upload avatar"
-                        >
-                          <Camera className="w-3 h-3" />
-                        </button>
-                        <input ref={avatarRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden"
-                          onChange={e => { const f = e.target.files?.[0]; if (f) void uploadAvatar(f); }} />
+                        <div className="text-xs space-y-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                          {ent.data.isPlus ? (
+                            <>
+                              <p className="font-medium" style={{ color: 'hsl(var(--foreground))' }}>Custom photo</p>
+                              <p>Upload your own · JPG, PNG, WebP · max 5 MB</p>
+                            </>
+                          ) : (
+                            <>
+                              <p className="font-medium" style={{ color: 'hsl(var(--foreground))' }}>Custom photo</p>
+                              <Link to="/plus" className="inline-flex items-center gap-1 font-semibold" style={{ color: 'hsl(var(--primary))' }}>
+                                <Sparkles className="w-3 h-3" />
+                                Unlock with Spellful Plus
+                              </Link>
+                            </>
+                          )}
+                        </div>
                       </div>
-                      <div className="text-xs space-y-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                        <p>Upload a photo or use a preset.</p>
-                        <p>JPG, PNG, WebP · max 5 MB</p>
+
+                      {/* Default avatar preset grid — available to all members */}
+                      <div>
+                        <p className="text-xs mb-2" style={{ color: 'hsl(var(--muted-foreground))' }}>Choose a preset avatar</p>
+                        <div className="grid grid-cols-5 gap-2">
+                          {DEFAULT_AVATARS.map(av => (
+                            <button
+                              key={av.key}
+                              onClick={() => { set('avatarPreset', form.avatarPreset === av.key ? '' : av.key); }}
+                              className="relative rounded-full overflow-hidden transition-all"
+                              style={{
+                                width: '48px', height: '48px',
+                                outline: form.avatarPreset === av.key ? `3px solid ${accent}` : '3px solid transparent',
+                                outlineOffset: '2px',
+                              }}
+                              aria-label={av.label}
+                              title={av.label}
+                            >
+                              <img src={av.src} alt={av.label} className="w-full h-full object-cover" />
+                              {form.avatarPreset === av.key && (
+                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none bg-black/40">
+                                  <Check className="w-4 h-4 text-white drop-shadow" />
+                                </div>
+                              )}
+                            </button>
+                          ))}
+                        </div>
                       </div>
                     </div>
                   </Collapsible>
@@ -919,17 +1115,26 @@ export default function ProfileStudioPage() {
                       ))}
                     </div>
                     <div className="flex items-center gap-2 pt-1">
-                      <Button variant="outline" size="sm" onClick={() => coverRef.current?.click()} disabled={coverUploading} className="gap-1.5 text-xs">
-                        <Camera className="w-3.5 h-3.5" />
-                        {coverUploading ? 'Uploading…' : 'Upload photo'}
-                      </Button>
-                      {form.coverImage && (
-                        <Button variant="ghost" size="sm" onClick={() => { set('coverImage', null); set('coverPreset', 'midnight'); }} className="gap-1.5 text-xs text-destructive">
-                          <X className="w-3.5 h-3.5" /> Remove
-                        </Button>
+                      {ent.data.isPlus ? (
+                        <>
+                          <Button variant="outline" size="sm" onClick={() => coverRef.current?.click()} disabled={coverUploading} className="gap-1.5 text-xs">
+                            <Camera className="w-3.5 h-3.5" />
+                            {coverUploading ? 'Uploading…' : 'Upload photo'}
+                          </Button>
+                          {form.coverImage && (
+                            <Button variant="ghost" size="sm" onClick={() => { set('coverImage', null); set('coverPreset', 'midnight'); }} className="gap-1.5 text-xs text-destructive">
+                              <X className="w-3.5 h-3.5" /> Remove
+                            </Button>
+                          )}
+                          <input ref={coverRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden"
+                            onChange={e => { const f = e.target.files?.[0]; if (f) void uploadCover(f); }} />
+                        </>
+                      ) : (
+                        <Link to="/plus" className="inline-flex items-center gap-1.5 text-xs font-semibold" style={{ color: 'hsl(var(--primary))' }}>
+                          <Sparkles className="w-3.5 h-3.5" />
+                          Upload a custom cover with Spellful Plus
+                        </Link>
                       )}
-                      <input ref={coverRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden"
-                        onChange={e => { const f = e.target.files?.[0]; if (f) void uploadCover(f); }} />
                     </div>
                   </Collapsible>
 
@@ -1004,21 +1209,61 @@ export default function ProfileStudioPage() {
 
                   {/* Avatar frame */}
                   <Collapsible title="Avatar Frame">
-                    <div className="grid grid-cols-3 gap-2">
-                      {AVATAR_FRAMES.map(f => (
-                        <button
-                          key={f.key}
-                          onClick={() => set('avatarFrame', f.key)}
-                          className="py-2 px-3 rounded-lg text-xs text-center transition-all"
-                          style={{
-                            background: form.avatarFrame === f.key ? `${accent}15` : 'hsl(var(--muted))',
-                            border: `1px solid ${form.avatarFrame === f.key ? accent : 'hsl(var(--border))'}`,
-                            color: form.avatarFrame === f.key ? accent : 'hsl(var(--foreground))',
-                          }}
-                        >
-                          {f.label}
-                        </button>
-                      ))}
+                    <div className="flex flex-wrap gap-3">
+                      {AVATAR_FRAMES.map(f => {
+                        const FRAME_PATHS: Record<string, string> = {
+                          moon:      'M8,4 Q12,0 16,4 Q20,8 16,12 Q12,16 8,12 Q4,8 8,4 M4,0 L4,2 M20,0 L20,2 M0,8 L2,8 M22,8 L24,8',
+                          celestial: 'M12,2 L13.5,8 L19,8 L14.5,11.5 L16,17 L12,13.5 L8,17 L9.5,11.5 L5,8 L10.5,8 Z',
+                          botanical: 'M12,2 Q14,6 12,10 Q10,6 12,2 M6,6 Q10,8 10,12 Q6,10 6,6 M18,6 Q14,8 14,12 Q18,10 18,6',
+                          crystal:   'M12,2 L16,8 L20,6 L16,14 L20,18 L12,16 L4,18 L8,14 L4,6 L8,8 Z',
+                          ornate:    'M2,2 L6,2 L6,6 M18,2 L22,2 L22,6 M2,18 L2,22 L6,22 M18,22 L22,22 L22,18 M12,1 L12,3 M12,21 L12,23 M1,12 L3,12 M21,12 L23,12',
+                        };
+                        const framePath = FRAME_PATHS[f.key];
+                        const isSelected = form.avatarFrame === f.key;
+                        return (
+                          <button
+                            key={f.key}
+                            onClick={() => set('avatarFrame', f.key)}
+                            className="relative flex flex-col items-center gap-1 rounded-lg p-1 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                            style={{
+                              background: isSelected ? `${accent}18` : 'transparent',
+                              outline: isSelected ? `2px solid ${accent}` : '2px solid transparent',
+                              outlineOffset: '2px',
+                            }}
+                          >
+                            <div className="relative w-10 h-10">
+                              <div
+                                className="w-10 h-10 rounded-full flex items-center justify-center"
+                                style={{
+                                  background: f.key
+                                    ? `conic-gradient(${accent} 0deg, hsl(var(--card)) 180deg, ${accent} 360deg)`
+                                    : 'hsl(var(--card))',
+                                  padding: f.key ? '2.5px' : '2px',
+                                }}
+                              >
+                                <div className="w-full h-full rounded-full flex items-center justify-center"
+                                  style={{ background: 'hsl(var(--muted))', fontSize: '14px' }}>
+                                  🧙
+                                </div>
+                              </div>
+                              {framePath && (
+                                <svg
+                                  width="48" height="48"
+                                  viewBox="0 0 24 24"
+                                  className="absolute pointer-events-none"
+                                  style={{ top: -4, left: -4, zIndex: 2 }}
+                                  aria-hidden="true"
+                                >
+                                  <path d={framePath} fill="none" stroke={accent} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                              )}
+                            </div>
+                            <span className="text-[10px]" style={{ color: isSelected ? accent : 'hsl(var(--muted-foreground))' }}>
+                              {f.label}
+                            </span>
+                          </button>
+                        );
+                      })}
                     </div>
                   </Collapsible>
 
@@ -1708,6 +1953,15 @@ export default function ProfileStudioPage() {
                         </div>
                       </div>
                     )}
+                  </Collapsible>
+
+                  <Collapsible title="Create image card">
+                    <ProfileShareCard
+                      username={(session?.user as SessionUser | undefined)?.username ?? ''}
+                      userId={session?.user?.id ?? ''}
+                      avatarUrl={presetSrc}
+                      displayName={form.displayName || null}
+                    />
                   </Collapsible>
 
                   <Collapsible title="Advanced">

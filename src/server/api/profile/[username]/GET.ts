@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
 import { db } from '@/server/db/client.js';
-import { user, covenConnections } from '@/server/db/schema.js';
-import { eq, and, or } from 'drizzle-orm';
+import { user, covenConnections, communityFollows } from '@/server/db/schema.js';
+import { eq, and, or, count } from 'drizzle-orm';
 import { getAuthSession } from '@/server/lib/auth-session.js';
 import { isBlocked } from '@/server/lib/block-check.js';
 
@@ -35,6 +35,7 @@ export default async function handler(req: Request<{ username: string }>, res: R
         interestTags: user.interestTags,
         socialLinks: user.socialLinks,
         // Profile 3.0
+        avatarPreset: user.avatarPreset,
         profileTheme: user.profileTheme,
         avatarFrame: user.avatarFrame,
         practiceLabels: user.practiceLabels,
@@ -98,9 +99,27 @@ export default async function handler(req: Request<{ username: string }>, res: R
       }
     }
 
-    res.json({ profile, connectionStatus, connectionId, isOwn: profile.id === viewerId });
+    // Coven count (accepted connections)
+    const [[covenRow], [followerRow]] = await Promise.all([
+      db.select({ n: count() }).from(covenConnections).where(
+        and(
+          or(
+            eq(covenConnections.requesterId, profile.id),
+            eq(covenConnections.receiverId, profile.id)
+          ),
+          eq(covenConnections.status, 'accepted')
+        )
+      ),
+      db.select({ n: count() }).from(communityFollows).where(
+        eq(communityFollows.followingId, profile.id)
+      ),
+    ]);
+    const covenCount = covenRow?.n ?? 0;
+    const followerCount = followerRow?.n ?? 0;
+
+    res.json({ profile, connectionStatus, connectionId, isOwn: profile.id === viewerId, covenCount, followerCount });
   } catch (err) {
-    console.error(JSON.stringify({ event: 'profile.get.error', msg: String(err).slice(0, 120) }));
+    console.error(JSON.stringify({ event: 'profile.get.error', msg: String(err).slice(0, 400) }));
     res.status(500).json({ error: 'Failed to load profile' });
   }
 }

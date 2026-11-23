@@ -6,7 +6,7 @@
 import type { Request, Response } from 'express';
 import { db } from '@/server/db/client.js';
 import { creatorApplications, communityReports, auditEvents, user } from '@/server/db/schema.js';
-import { eq, desc, count, and, gte, or, isNotNull } from 'drizzle-orm';
+import { eq, desc, count, or, sql } from 'drizzle-orm';
 import { getAuthSession } from '@/server/lib/auth-session.js';
 import { hasRole } from '@/server/lib/require-role.js';
 
@@ -53,7 +53,7 @@ export default async function handler(req: Request, res: Response) {
       ))
       .orderBy(desc(creatorApplications.submittedAt))
       .limit(5),
-    // 10 most recent audit events
+    // 10 most recent audit events — use sql template to avoid nullable-column type error
     db.select({
       id: auditEvents.id,
       action: auditEvents.action,
@@ -64,7 +64,7 @@ export default async function handler(req: Request, res: Response) {
       actorId: auditEvents.actorId,
     })
       .from(auditEvents)
-      .where(and(isNotNull(auditEvents.createdAt), gte(auditEvents.createdAt, since30d)))
+      .where(sql`${auditEvents.createdAt} IS NOT NULL AND ${auditEvents.createdAt} >= ${since30d}`)
       .orderBy(desc(auditEvents.createdAt))
       .limit(10),
   ]);

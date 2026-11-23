@@ -517,6 +517,24 @@ export default function SpellDetailPage() {
     setSaved(d.saved);
     setSaveCount(d.saveCount);
     setSaveMsg(d.saved ? 'Saved to your Grimoire!' : 'Removed from Grimoire');
+    // Mirror save (not unsave) to Grimoire so it appears in Book of Shadows
+    if (d.saved && spell) {
+      void fetch('/api/grimoire', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          type: 'spell',
+          title: spell.title,
+          content: spell.subtitle || spell.intention || '',
+          notes: spell.intention ? `Intention: ${spell.intention}` : '',
+          tags: `spell,${spell.moonPhase ? spell.moonPhase.toLowerCase() : ''}`.replace(/,$/, ''),
+          moonPhase: spell.moonPhase ?? '',
+          entryDate: new Date().toISOString().split('T')[0],
+          metadata: { spellSlug: slug, difficulty: spell.difficulty, durationMinutes: spell.durationMinutes },
+        }),
+      });
+    }
     setTimeout(() => setSaveMsg(''), 3000);
     setSaveBusy(false);
   };

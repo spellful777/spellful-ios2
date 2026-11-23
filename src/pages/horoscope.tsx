@@ -101,6 +101,40 @@ export default function HoroscopePage() {
   const [horoscope, setHoroscope] = useState<DailyHoroscope | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [horoscopeSaved, setHoroscopeSaved] = useState(false);
+  const [horoscopeSaving, setHoroscopeSaving] = useState(false);
+
+  const handleSaveHoroscope = useCallback(async () => {
+    if (!horoscope || !session) return;
+    setHoroscopeSaving(true);
+    try {
+      const res = await fetch('/api/grimoire', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          type: 'journal',
+          title: `${horoscope.sign} Horoscope — ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`,
+          content: `${horoscope.headline}\n\n${horoscope.body}\n\n${horoscope.planetNote}`,
+          notes: [
+            horoscope.moonContext ? `Moon: ${horoscope.moonContext}` : '',
+            horoscope.risingContext ? `Rising: ${horoscope.risingContext}` : '',
+            horoscope.do.length ? `Do: ${horoscope.do.join(', ')}` : '',
+            horoscope.dont.length ? `Don't: ${horoscope.dont.join(', ')}` : '',
+          ].filter(Boolean).join('\n'),
+          tags: `horoscope,${horoscope.sign.toLowerCase()}`,
+          entryDate: new Date().toISOString().split('T')[0],
+          metadata: { sign: horoscope.sign, source: 'horoscope' },
+        }),
+      });
+      if (!res.ok) throw new Error('Failed');
+      setHoroscopeSaved(true);
+    } catch {
+      // silently fail — button stays enabled so user can retry
+    } finally {
+      setHoroscopeSaving(false);
+    }
+  }, [horoscope, session]);
 
   const fetchHoroscope = useCallback(async () => {
     setLoading(true);
@@ -426,7 +460,7 @@ export default function HoroscopePage() {
                 </div>
               </div>
 
-              {/* Share */}
+              {/* Share + Save to Grimoire */}
               <div
                 style={{
                   borderTop: '1px solid hsl(var(--border))',
@@ -434,6 +468,8 @@ export default function HoroscopePage() {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
+                  flexWrap: 'wrap',
+                  gap: '1rem',
                 }}
               >
                 <p
@@ -442,7 +478,25 @@ export default function HoroscopePage() {
                 >
                   {hc.dateUpdatesNote}
                 </p>
-                <SharePanel horoscope={horoscope} />
+                <div className="flex items-center gap-3 flex-wrap">
+                  {session && (
+                    <button
+                      onClick={() => void handleSaveHoroscope()}
+                      disabled={horoscopeSaving || horoscopeSaved}
+                      className="flex items-center gap-2 text-sm px-5 py-2.5 rounded-full transition-all duration-200 disabled:opacity-60"
+                      style={{
+                        background: horoscopeSaved ? 'hsl(var(--success) / 0.15)' : 'hsl(var(--muted))',
+                        color: horoscopeSaved ? 'hsl(var(--success))' : 'hsl(var(--primary))',
+                        border: horoscopeSaved ? '1px solid hsl(var(--success) / 0.4)' : '1px solid hsl(var(--primary) / 0.3)',
+                        fontFamily: 'var(--font-sans)',
+                        letterSpacing: '0.06em',
+                      }}
+                    >
+                      {horoscopeSaved ? '✓ Saved to Grimoire' : horoscopeSaving ? 'Saving…' : '📖 Save to Grimoire'}
+                    </button>
+                  )}
+                  <SharePanel horoscope={horoscope} />
+                </div>
               </div>
             </motion.div>
           )}

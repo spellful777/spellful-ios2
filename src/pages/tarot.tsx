@@ -1299,6 +1299,31 @@ export default function TarotPage() {
       if (!res.ok) throw new Error('Failed to save');
       setSaved(true);
       if (showHistory) void loadHistory();
+      // Mirror to Grimoire so it appears in the user's Book of Shadows
+      void fetch('/api/grimoire', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          type: 'tarot',
+          title: `${selectedSpread.name} Reading`,
+          content: drawnCards.map((d, i) =>
+            `${selectedSpread.positions[i]?.label ?? `Card ${i + 1}`}: ${d.card.name}${d.reversed ? ' (Reversed)' : ''}`
+          ).join('\n'),
+          notes: intention ? `Intention: ${intention}` : '',
+          tags: 'tarot',
+          moonPhase: '',
+          entryDate: new Date().toISOString().split('T')[0],
+          metadata: {
+            spreadType: selectedSpread.id,
+            cards: drawnCards.map((d, i) => ({
+              position: selectedSpread.positions[i]?.id,
+              cardId: d.card.id,
+              reversed: d.reversed,
+            })),
+          },
+        }),
+      });
     } catch {
       setSaveError('Could not save reading. Please try again.');
     } finally {

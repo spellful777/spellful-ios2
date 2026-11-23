@@ -750,5 +750,13 @@
   "pages/horoscope/story-template-14": {
     "mediaType": "image",
     "currentUrl": "/airo-assets/uploads/pages-horoscope-story-template-14-2047f6f8.png"
+  },
+  "pages/profile/share-card-bg-story": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/pages-profile-share-card-bg-story-760ec5c2.png"
+  },
+  "pages/profile/share-card-bg-square": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/pages-profile-share-card-bg-square-92318006.png"
   }
 }

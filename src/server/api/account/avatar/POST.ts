@@ -6,6 +6,7 @@ import { eq } from 'drizzle-orm';
 import { writeFile, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
+import { getEntitlement } from '@/server/lib/plus-entitlement.js';
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 const MAX_SIZE = 5 * 1024 * 1024; // 5 MB
@@ -13,6 +14,13 @@ const MAX_SIZE = 5 * 1024 * 1024; // 5 MB
 export default async function handler(req: Request, res: Response): Promise<void> {
   const session = await getAuthSession(req);
   if (!session) { res.status(401).json({ error: 'Unauthorized' }); return; }
+
+  // Custom avatar upload is a Spellful Plus feature
+  const ent = await getEntitlement(session.user.id);
+  if (!ent.isPlus) {
+    res.status(403).json({ error: 'Custom avatar upload requires Spellful Plus.', code: 'PLUS_REQUIRED' });
+    return;
+  }
 
   // Express with urlencoded/json middleware doesn't parse multipart.
   // We read the raw body manually from the stream.

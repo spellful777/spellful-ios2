@@ -42,6 +42,7 @@ export const user = mysqlTable('user', {
   invitePermission: varchar('invite_permission', { length: 20 }).default('coven'),   // everyone | nobody
   notificationPreferences: json('notification_preferences').$type<Record<string, boolean>>(),
   // Profile 3.0 fields
+  avatarPreset: varchar('avatar_preset', { length: 60 }).default(''),           // default-hat-black | default-hat-blue | etc.
   profileTheme: varchar('profile_theme', { length: 50 }).default(''),          // celestial | forest | lunar | gothic | cottage | crystal
   avatarFrame: varchar('avatar_frame', { length: 50 }).default(''),             // moon | celestial | botanical | crystal | ornate | ''
   practiceLabels: json('practice_labels').$type<string[]>(),                   // e.g. ['Green Witch', 'Tarot Reader']
@@ -61,6 +62,8 @@ export const user = mysqlTable('user', {
   // RBAC — Phase 1
   platformRole: varchar('platform_role', { length: 30 }).default('member'), // owner | admin | moderator | support | member
   accountType: varchar('account_type', { length: 30 }).default('community_member'), // community_member | creator | organization | official
+  // Registration source — how the member joined
+  signupSource: varchar('signup_source', { length: 60 }).default(''),
   // Birthday & feed sharing
   shareBirthdayInFeed: boolean('share_birthday_in_feed').default(false),
   createdAt: timestamp('created_at').defaultNow(),
@@ -485,6 +488,7 @@ export const communityPosts = mysqlTable('community_posts', {
   likeCount: int('like_count').default(0),
   replyCount: int('reply_count').default(0),
   viewCount: int('view_count').default(0),
+  shareCount: int('share_count').default(0),
   editedAt: timestamp('edited_at'),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
@@ -1215,5 +1219,30 @@ export const practiceRoutines = mysqlTable(
   },
   (t) => [
     index('idx_pr_user').on(t.userId),
+  ],
+);
+
+// ─── Bug Reports ──────────────────────────────────────────────────────────────
+// Community-submitted bug reports. status: new | in_progress | resolved
+export const bugReports = mysqlTable(
+  'bug_reports',
+  {
+    id: int('id').primaryKey().autoincrement(),
+    reporterId: varchar('reporter_id', { length: 36 }).references(() => user.id, { onDelete: 'set null' }),
+    title: varchar('title', { length: 255 }).notNull(),
+    description: text('description').notNull(),
+    pageUrl: varchar('page_url', { length: 500 }).default(''),
+    status: varchar('status', { length: 20 }).notNull().default('new'), // new | in_progress | resolved
+    assignedTo: varchar('assigned_to', { length: 36 }).references(() => user.id, { onDelete: 'set null' }),
+    resolvedAt: timestamp('resolved_at'),
+    resolvedBy: varchar('resolved_by', { length: 36 }).references(() => user.id, { onDelete: 'set null' }),
+    adminNote: text('admin_note').default(''),
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
+  },
+  (t) => [
+    index('idx_br_reporter').on(t.reporterId),
+    index('idx_br_status').on(t.status),
+    index('idx_br_created').on(t.createdAt),
   ],
 );

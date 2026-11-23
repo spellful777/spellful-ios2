@@ -267,7 +267,15 @@ html {
   --footer-gold: 33 45% 62%;
   --footer-lavender: 270 45% 67%;
   --footer-plum: 270 47% 11%;
+  --accent-rose: 350 65% 62%;
+  --accent-violet: 270 55% 60%;
   --device-shell: 248 41% 5%;
+  /* Profile Studio Preview — Plus accent swatches */
+  --preview-accent-gold: 44 54% 54%;
+  --preview-accent-lavender: 259 39% 76%;
+  --preview-accent-rose: 350 55% 60%;
+  --preview-accent-sage: 150 28% 58%;
+  --preview-accent-free: 230 15% 60%;
   --mobile-menu-bg-start: 248 55% 8%;
   --mobile-menu-bg-mid: 259 60% 13%;
   --mobile-menu-bg-end: 270 50% 7%;
